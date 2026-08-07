@@ -75,6 +75,24 @@ function initialPriceRows(product?: Product): PriceRow[] {
   return ordered.length ? ordered : [{ key: randomKey(), currency: product.currency, amount: product.amount === null || product.amount === undefined ? '' : String(product.amount) }];
 }
 
+function productImageInputs(product?: Product): DraftImageInput[] {
+  return (product?.images || []).map((image) => ({
+    id: image.id,
+    url: image.url,
+    mediaType: image.mediaType || 'image',
+    videoProvider: image.videoProvider,
+    thumbnailUrl: image.thumbnailUrl,
+  }));
+}
+
+function productBaseName(product?: Product) {
+  return (product?.translations?.pt || product?.name || '').trim();
+}
+
+function productBaseDescription(product?: Product) {
+  return product?.descriptionTranslations?.pt || product?.descriptionHtml || '';
+}
+
 function DraftMediaPreview({ image }: { image: DraftImage }) {
   const thumb = mediaThumbUrl(image.input);
   if (!isVideoMedia(image.input)) {
@@ -441,29 +459,46 @@ export function ProductForm({ product, cities, categories, descriptionTemplates 
       coordinates: mansionCoordinatesValue,
       descriptionHtml,
     });
+    const preservedPrices = product ? normalizedPrices(product) : prices;
+    const preservedName = productBaseName(product) || name.trim();
+    const preservedDescriptionHtml = productBaseDescription(product) || descriptionHtml;
+    const payloadCategoryId = canEditCategory ? categoryId : product?.categoryId || categoryId;
+    const payloadName = canEditName ? name.trim() : preservedName;
+    const payloadDescriptionHtml = canEditDescription ? descriptionHtml : preservedDescriptionHtml;
+    const payloadDescriptionTranslations = canEditDescription
+      ? descriptionTranslations
+      : product?.descriptionTranslations;
+    const payloadPrices = canEditPrice ? prices : preservedPrices;
+    const payloadPrimaryCurrency = canEditPrice ? primary?.currency || 'BRL' : product?.currency || 'BRL';
+    const payloadPrimaryAmount = canEditPrice ? primaryAmount : product?.amount ?? null;
+    const payloadImages = canEditMedia ? images.map((image) => image.input) : productImageInputs(product);
+    const payloadCoordinates = canEditDescription ? mansionCoordinatesValue : product?.coordinates || mansionCoordinatesValue;
+    const payloadStorageWeight = canEditDescription ? mansionStorageValue : product?.storageWeight || mansionStorageValue;
+    const payloadSourceLanguage = canEditName || canEditDescription ? contentLanguageFor(language) : 'pt';
 
     setSaving(true);
     setError('');
     try {
       await onSave({
         id: product?.id,
-        categoryId,
-        coordinates: mansionCoordinatesValue,
-        storageWeight: mansionStorageValue,
-        name: name.trim(),
-        descriptionHtml,
-        ...(descriptionTranslations ? { descriptionTranslations } : {}),
-        sourceLanguage: contentLanguageFor(language),
-        autoTranslate: true,
-        autoTranslateDescription: true,
+        categoryId: payloadCategoryId,
+        coordinates: payloadCoordinates,
+        storageWeight: payloadStorageWeight,
+        name: payloadName,
+        descriptionHtml: payloadDescriptionHtml,
+        ...(payloadDescriptionTranslations ? { descriptionTranslations: payloadDescriptionTranslations } : {}),
+        sourceLanguage: payloadSourceLanguage,
+        autoTranslate: canEditName,
+        autoTranslateDescription: canEditDescription,
         syncNameAcrossLanguages: false,
-        prices,
-        amount: primaryAmount,
-        currency: primary?.currency || 'BRL',
-        images: images.map((image) => image.input),
-        sold,
-        soldOwnerName: sold ? soldOwnerName.trim() : '',
-        soldOwnerDiscordId: sold ? soldOwnerDiscordId.trim() : '',
+        prices: payloadPrices,
+        amount: payloadPrimaryAmount,
+        currency: payloadPrimaryCurrency,
+        images: payloadImages,
+        order: product?.order,
+        sold: canMarkSold ? sold : product?.sold === true,
+        soldOwnerName: canMarkSold && sold ? soldOwnerName.trim() : product?.soldOwnerName || '',
+        soldOwnerDiscordId: canMarkSold && sold ? soldOwnerDiscordId.trim() : product?.soldOwnerDiscordId || '',
       });
     } catch (err) {
       console.error(err);
