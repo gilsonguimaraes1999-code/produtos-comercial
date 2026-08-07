@@ -193,3 +193,4 @@
 03:40:16 [vite] (ssr) page reload src/styles.css
 03:53:26 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
 03:53:56 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+04:23:43 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductForm.tsx
