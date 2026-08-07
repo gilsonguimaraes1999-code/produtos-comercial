@@ -1,0 +1,195 @@
+
+  VITE v8.2.0  ready in 28874 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+10:47:03 [vite] (ssr) connected.
+11:40:30 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+11:40:32 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/DescriptionTemplatesPage.tsx
+11:43:42 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+11:43:42 [vite] (ssr) page reload src/styles.css
+11:43:42 [vite] (ssr) program reload
+11:45:41 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/DescriptionTemplatesPage.tsx
+11:46:06 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+11:46:06 [vite] (ssr) page reload src/styles.css
+11:46:06 [vite] (ssr) program reload
+11:55:19 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/Toast.tsx
+12:33:16 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+12:33:16 [vite] (ssr) page reload src/styles.css
+12:33:16 [vite] (ssr) program reload
+12:36:27 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+12:36:27 [vite] (ssr) page reload src/styles.css
+12:36:27 [vite] (ssr) program reload
+12:48:22 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+12:48:40 [vite] (client) hmr update /src/styles.css?direct
+12:49:03 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductForm.tsx
+12:52:11 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+12:52:11 [vite] (ssr) page reload src/styles.css
+12:52:11 [vite] (ssr) program reload
+12:56:59 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx
+12:57:26 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+12:57:58 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductForm.tsx
+13:24:52 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx
+13:42:23 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx
+13:43:31 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx, /src/app/components/CategorySelect.tsx
+13:43:31 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+13:43:31 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+13:43:57 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+13:44:24 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductForm.tsx
+13:46:20 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx
+13:46:20 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+13:46:20 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+14:00:34 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx
+14:00:34 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+14:00:34 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+14:01:00 [vite] (client) hmr update /src/styles.css?direct, /src/app/catalog.tsx
+14:01:00 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+14:01:00 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+14:54:18 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+14:54:18 [vite] (ssr) page reload src/styles.css
+14:54:18 [vite] (ssr) program reload
+14:57:44 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+14:57:44 [vite] (ssr) page reload src/styles.css
+14:57:44 [vite] (ssr) program reload
+15:05:46 [vite] (client) hmr update /src/styles.css?direct, /src/app/auth.tsx, /src/app/App.tsx, /src/app/catalog.tsx, /src/app/components/BackupDialog.tsx, /src/app/components/UserManagement.tsx
+15:05:46 [vite] (client) hmr invalidate /src/app/auth.tsx Could not Fast Refresh ("useAuth" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+15:05:46 [vite] (client) hmr update /src/app/AppPage.tsx, /src/app/App.tsx, /src/app/components/Login.tsx, /src/app/catalog.tsx, /src/app/components/CatalogApp.tsx, /src/app/components/UserManagement.tsx
+15:05:46 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+15:05:46 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+15:06:02 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/Login.tsx
+15:08:21 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+15:08:21 [vite] (ssr) page reload src/styles.css
+15:08:21 [vite] (ssr) program reload
+15:11:33 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+15:11:33 [vite] (ssr) page reload src/styles.css
+15:11:33 [vite] (ssr) program reload
+15:13:34 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+15:13:34 [vite] (ssr) page reload src/styles.css
+15:14:24 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+15:14:24 [vite] (ssr) page reload src/styles.css
+15:43:56 [vite] (client) hmr update /src/styles.css?direct
+15:44:23 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx, /src/app/catalog.tsx
+15:44:23 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+15:44:23 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+15:44:23 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+15:44:23 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+15:44:45 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+17:43:45 [vite] (client) hmr update /src/styles.css?direct
+17:44:13 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx, /src/app/components/CategorySelect.tsx
+17:44:13 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:44:13 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+17:44:33 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx, /src/app/components/CategorySelect.tsx
+17:44:34 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:44:34 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+17:44:56 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+17:44:56 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:44:56 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+17:45:23 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductForm.tsx
+17:47:01 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+17:47:48 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx, /src/app/catalog.tsx
+17:47:48 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:47:48 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+17:47:48 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+17:47:48 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+18:40:41 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+18:40:41 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:40:41 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+18:41:01 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+18:41:01 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:41:01 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+18:41:16 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+18:41:16 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:41:16 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+18:42:10 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+18:42:10 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:42:10 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+18:42:29 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx, /src/app/components/CategorySelect.tsx
+18:42:29 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:42:29 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+18:42:55 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductDetails.tsx
+18:51:57 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+18:51:57 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+18:51:58 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+18:52:18 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+18:52:18 [vite] (ssr) page reload src/styles.css
+18:52:39 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+18:52:39 [vite] (ssr) page reload src/styles.css
+19:02:34 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx
+19:02:34 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+19:02:34 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+19:02:53 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+19:02:53 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+19:02:53 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+19:03:16 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductDetails.tsx
+19:17:06 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+19:17:06 [vite] (ssr) page reload src/styles.css
+19:21:43 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+19:21:43 [vite] (ssr) page reload src/styles.css
+19:22:07 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+19:22:07 [vite] (ssr) page reload src/styles.css
+19:33:03 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx
+19:33:03 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+19:33:03 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+19:51:47 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+19:51:47 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+19:51:47 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+19:52:10 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+19:52:10 [vite] (ssr) page reload src/styles.css
+02:53:45 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx, /src/app/catalog.tsx
+02:53:45 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+02:53:45 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+02:53:45 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+02:53:45 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+02:54:30 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+02:54:54 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+03:01:30 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx, /src/app/catalog.tsx
+03:01:30 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:01:30 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+03:01:30 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:01:30 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+03:03:38 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+03:03:59 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+03:04:52 [vite] (client) hmr update /src/styles.css?direct, /src/i18n/index.tsx
+03:04:52 [vite] (ssr) page reload src/i18n/index.tsx
+03:04:52 [vite] (ssr) program reload
+03:04:52 [vite] (client) hmr invalidate /src/i18n/index.tsx Could not Fast Refresh ("contentLanguageForInterface" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:04:52 [vite] (client) hmr update /src/routes/__root.tsx, /src/app/AppPage.tsx, /src/app/App.tsx, /src/app/components/Login.tsx, /src/app/catalog.tsx, /src/app/components/CatalogApp.tsx, /src/app/components/CityForm.tsx, /src/app/components/ConfirmDialog.tsx, /src/app/components/CurrencySelect.tsx, /src/app/components/CitySelect.tsx, /src/app/components/Modal.tsx, /src/app/components/BackupDialog.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx and 7 more
+03:04:53 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:04:53 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+03:04:53 [vite] (client) hmr invalidate /src/app/components/CurrencySelect.tsx Could not Fast Refresh ("CURRENCIES" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:04:53 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx
+03:04:53 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:04:53 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+03:08:28 [vite] (client) hmr update /src/styles.css?direct, /src/app/catalog.tsx
+03:08:28 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:08:28 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+03:08:48 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx, /src/app/catalog.tsx
+03:08:48 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:08:48 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+03:08:48 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:08:48 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+03:20:48 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductForm.tsx, /src/app/components/ProductCard.tsx, /src/app/components/CloneDialog.tsx, /src/app/components/CategoryForm.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/CategorySelect.tsx, /src/app/catalog.tsx
+03:20:49 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:20:49 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+03:20:49 [vite] (client) hmr invalidate /src/app/catalog.tsx Could not Fast Refresh ("useCatalog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:20:49 [vite] (client) hmr update /src/app/App.tsx, /src/app/components/CatalogApp.tsx
+03:21:53 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+03:22:17 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+03:25:11 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+03:34:06 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx
+03:34:07 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:34:07 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+03:34:44 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductCard.tsx
+03:34:44 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:34:44 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+03:35:10 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/ProductDetails.tsx
+03:36:27 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+03:36:27 [vite] (ssr) page reload src/styles.css
+03:36:50 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+03:36:50 [vite] (ssr) page reload src/styles.css
+03:39:51 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx, /src/app/components/ProductCard.tsx, /src/app/components/ProductDetails.tsx, /src/app/components/ProductForm.tsx
+03:39:51 [vite] (client) hmr invalidate /src/app/components/ProductCard.tsx Could not Fast Refresh ("formatPrice" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+03:39:51 [vite] (client) hmr update /src/app/components/CatalogApp.tsx, /src/app/components/ProductDetails.tsx
+03:40:16 [vite] (client) hmr update /src/styles.css?direct, /src/routes/__root.tsx
+03:40:16 [vite] (ssr) page reload src/styles.css
+03:53:26 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx
+03:53:56 [vite] (client) hmr update /src/styles.css?direct, /src/app/components/CatalogApp.tsx

@@ -1,0 +1,108 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+03:04:16 [vite] (client) [console.error] An empty string ("") was passed to the src attribute. This may cause the browser to download the whole page again over the network. To fix this, either do not render the element at all or pass null to src instead of an empty string.
+03:04:17 [vite] (client) [console.error] An empty string ("") was passed to the src attribute. This may cause the browser to download the whole page again over the network. To fix this, either do not render the element at all or pass null to src instead of an empty string.
+03:21:54 [vite] (client) [console.error] ReferenceError: ImageIcon is not defined
+    at CatalogApp (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786083713960:2251:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:12864:12)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:4211:19)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:5567:16)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:6138:20)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8427:92)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8323:37)
+    at renderRootSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8307:6)
+    at performWorkOnRoot (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:7955:181)
+03:21:54 [vite] (client) [console.error] ReferenceError: ImageIcon is not defined
+    at CatalogApp (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786083713960:2251:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:12864:12)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:4211:19)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:5567:16)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:6138:20)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8427:92)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8323:37)
+    at renderRootSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8307:6)
+    at performWorkOnRoot (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:7955:181)
+03:21:54 [vite] (client) [console.error] ReferenceError: ImageIcon is not defined
+    at CatalogApp (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786083713960:2251:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:12864:12)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:4211:19)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:5567:16)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:6138:20)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8427:92)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8323:37)
+    at renderRootSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8307:6)
+    at performWorkOnRoot (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:7992:27)
+03:21:54 [vite] (client) [console.error] ReferenceError: ImageIcon is not defined
+    at CatalogApp (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786083713960:2251:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:12864:12)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:4211:19)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:5567:16)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:6138:20)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8427:92)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8323:37)
+    at renderRootSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8307:6)
+    at performWorkOnRoot (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:7992:27)
+03:21:54 [vite] (client) [console.error] ReferenceError: ImageIcon is not defined
+    at CatalogApp (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786083713960:2251:36)
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:12864:12)
+    at renderWithHooks (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:4211:19)
+    at updateFunctionComponent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:5567:16)
+    at beginWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:6138:20)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at performUnitOfWork (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8427:92)
+    at workLoopSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8323:37)
+    at renderRootSync (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:8307:6)
+    at performWorkOnRoot (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:7992:27)
+
+The above error occurred in the <CatalogApp> component.
+
+React will try to recreate this component tree from scratch using the error boundary you provided, CatchBoundaryImpl.
+
+03:21:54 [vite] (client) [console.warn] Warning: Error in route match: __root__/
+04:05:48 [vite] (client) [console.error] ApiError: INVALID_IMAGE_CONTENT
+    at saveProduct (http://127.0.0.1:5173/src/app/catalog.tsx?t=1786083648915:160:12)
+    at onSave (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786085636015:2823:13)
+    at submit (http://127.0.0.1:5173/src/app/components/ProductForm.tsx?t=1786084791621:436:10)
+    at executeDispatch (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9139:5)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at processDispatchQueue (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9165:27)
+    at http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9452:5
+    at batchedUpdates$1 (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:2042:12)
+    at dispatchEventForPluginEventSystem (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9238:4)
+    at dispatchEvent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:11317:29)
+04:05:49 [vite] (client) [console.error] ApiError: INVALID_IMAGE_CONTENT
+    at saveProduct (http://127.0.0.1:5173/src/app/catalog.tsx?t=1786083648915:160:12)
+    at onSave (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786085636015:2823:13)
+    at submit (http://127.0.0.1:5173/src/app/components/ProductForm.tsx?t=1786084791621:436:10)
+    at executeDispatch (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9139:5)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at processDispatchQueue (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9165:27)
+    at http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9452:5
+    at batchedUpdates$1 (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:2042:12)
+    at dispatchEventForPluginEventSystem (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9238:4)
+    at dispatchEvent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:11317:29)
+04:05:52 [vite] (client) [console.error] ApiError: INVALID_IMAGE_CONTENT
+    at saveProduct (http://127.0.0.1:5173/src/app/catalog.tsx?t=1786083648915:160:12)
+    at onSave (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786085636015:2823:13)
+    at submit (http://127.0.0.1:5173/src/app/components/ProductForm.tsx?t=1786084791621:436:10)
+    at executeDispatch (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9139:5)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at processDispatchQueue (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9165:27)
+    at http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9452:5
+    at batchedUpdates$1 (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:2042:12)
+    at dispatchEventForPluginEventSystem (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9238:4)
+    at dispatchEvent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:11317:29)
+04:06:01 [vite] (client) [console.error] ApiError: INVALID_IMAGE_CONTENT
+    at saveProduct (http://127.0.0.1:5173/src/app/catalog.tsx?t=1786083648915:160:12)
+    at onSave (http://127.0.0.1:5173/src/app/components/CatalogApp.tsx?t=1786085636015:2823:13)
+    at submit (http://127.0.0.1:5173/src/app/components/ProductForm.tsx?t=1786084791621:436:10)
+    at executeDispatch (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9139:5)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:850:66)
+    at processDispatchQueue (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9165:27)
+    at http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9452:5
+    at batchedUpdates$1 (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:2042:12)
+    at dispatchEventForPluginEventSystem (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:9238:4)
+    at dispatchEvent (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=30554679:11317:29)
