@@ -1,5 +1,7 @@
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Boxes,
   CheckCircle2,
   ChevronDown,
@@ -81,17 +83,6 @@ interface ProductPointerDrag {
   containerTop: number;
   containerRight: number;
   containerBottom: number;
-}
-
-interface CategoryPointerDrag {
-  categoryId: string;
-  targetCategoryId?: string;
-  pointerX: number;
-  pointerY: number;
-  offsetX: number;
-  offsetY: number;
-  width: number;
-  height: number;
 }
 
 interface PendingConfirm extends ConfirmOptions {
@@ -501,7 +492,6 @@ export function CatalogApp() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [productPointerDrag, setProductPointerDrag] = useState<ProductPointerDrag | null>(null);
-  const [categoryPointerDrag, setCategoryPointerDrag] = useState<CategoryPointerDrag | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === 'undefined') return 320;
     const saved = Number(window.localStorage.getItem('sg-sidebar-width'));
@@ -510,7 +500,6 @@ export function CatalogApp() {
   const dragRef = useRef<DragState | null>(null);
   const categoryRefs = useRef(new Map<string, HTMLElement>());
   const categoryRectsRef = useRef(new Map<string, DOMRect>());
-  const categoryPointerDragRef = useRef<CategoryPointerDrag | null>(null);
   const productCardRefs = useRef(new Map<string, HTMLElement>());
   const productRectsRef = useRef(new Map<string, DOMRect>());
   const productAnimationsRef = useRef(new Map<string, Animation>());
@@ -1011,11 +1000,7 @@ export function CatalogApp() {
     () => orderedCategories.filter((category) => !activeCityId || category.cityId === activeCityId),
     [activeCityId, orderedCategories],
   );
-  const previewedVisibleCategories = useMemo(() => (
-    categoryPointerDrag
-      ? swapById(visibleCategories, categoryPointerDrag.categoryId, categoryPointerDrag.targetCategoryId)
-      : visibleCategories
-  ), [categoryPointerDrag, visibleCategories]);
+  const previewedVisibleCategories = visibleCategories;
 
   useEffect(() => {
     if (!catalog.cities.length) {
@@ -1080,9 +1065,6 @@ export function CatalogApp() {
     : null;
   const draggedProductMedia = draggedProduct?.images[0];
   const draggedProductThumb = draggedProductMedia ? mediaThumbUrl(draggedProductMedia) : '';
-  const draggedCategory = categoryPointerDrag
-    ? catalog.categories.find((category) => category.id === categoryPointerDrag.categoryId) || null
-    : null;
   const activeProductDragId = productPointerDrag?.productId || null;
   function productListSortStyle(product: Product): CSSProperties | undefined {
     void product;
@@ -1111,52 +1093,6 @@ export function CatalogApp() {
   useEffect(() => {
     productPointerDragRef.current = productPointerDrag;
   }, [productPointerDrag]);
-  useEffect(() => {
-    categoryPointerDragRef.current = categoryPointerDrag;
-  }, [categoryPointerDrag]);
-  useEffect(() => {
-    if (!categoryPointerDrag) return;
-
-    function onPointerMove(event: PointerEvent) {
-      const current = categoryPointerDragRef.current;
-      if (!current) return;
-      event.preventDefault();
-      autoScrollNearPointer(event.clientX, event.clientY);
-
-      const targetCategoryId = categoryTargetFromPoint(event.clientX, event.clientY, current.categoryId);
-      const { targetCategoryId: _previousTargetCategoryId, ...dragWithoutTarget } = current;
-      const nextDrag: CategoryPointerDrag = targetCategoryId
-        ? { ...dragWithoutTarget, pointerX: event.clientX, pointerY: event.clientY, targetCategoryId }
-        : { ...dragWithoutTarget, pointerX: event.clientX, pointerY: event.clientY };
-
-      categoryPointerDragRef.current = nextDrag;
-      setCategoryPointerDrag(nextDrag);
-    }
-
-    function onPointerUp() {
-      const current = categoryPointerDragRef.current;
-      if (!current) return;
-      void moveCategorySwap(current.targetCategoryId, current.categoryId);
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
-      dragRef.current = null;
-      setCategoryPointerDrag(null);
-    }
-
-    document.body.classList.add('product-sort-active');
-    window.addEventListener('pointermove', onPointerMove, { passive: false });
-    window.addEventListener('pointerup', onPointerUp, { once: true });
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      document.body.classList.remove('product-sort-active');
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [categoryPointerDrag, previewedVisibleCategories]);
   useEffect(() => {
     if (!activeProductDragId || !activeCategory) return;
 
@@ -1347,7 +1283,7 @@ export function CatalogApp() {
       const deltaY = previousRect.top - nextRect.top;
       if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) continue;
 
-      const duration = categoryPointerDrag ? 210 : 260;
+      const duration = 220;
       const easing = 'cubic-bezier(.2, .8, .2, 1)';
       if (typeof element.animate === 'function') {
         element.animate(
@@ -1372,7 +1308,7 @@ export function CatalogApp() {
     }
 
     categoryRectsRef.current = nextRects;
-  }, [categoryPointerDrag, previewedVisibleCategories]);
+  }, [previewedVisibleCategories]);
   useEffect(() => {
     const onLanguageSelected = (event: Event) => {
       const selected = (event as CustomEvent<string>).detail;
@@ -1550,30 +1486,6 @@ export function CatalogApp() {
     return nearest ? { productId: nearest.product.id, position: productInsertFromRect(nearest.rect, targetX, targetY) } : undefined;
   }
 
-  function startCategoryPointerDrag(category: Category, event: ReactPointerEvent<HTMLElement>) {
-    if (!owner) return;
-    const element = categoryRefs.current.get(category.id);
-    if (!element) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const rect = element.getBoundingClientRect();
-    const nextDrag: CategoryPointerDrag = {
-      categoryId: category.id,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-
-    dragRef.current = { type: 'category', id: category.id };
-    categoryPointerDragRef.current = nextDrag;
-    setCategoryPointerDrag(nextDrag);
-  }
-
   function startProductPointerDrag(product: Product, event: ReactPointerEvent<HTMLButtonElement>) {
     if (!owner || !activeCategory) return;
     if (productSortMode !== 'manual') return;
@@ -1703,18 +1615,18 @@ export function CatalogApp() {
     window.addEventListener('pointerup', onUp, { once: true });
   }
 
+  function moveCategoryStep(category: Category, direction: -1 | 1) {
+    if (!owner) return;
+    const currentIndex = visibleCategories.findIndex((item) => item.id === category.id);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= visibleCategories.length) return;
 
-  function moveCategorySwap(targetId?: string, explicitCategoryId?: string) {
-    const drag = dragRef.current;
-    const categoryId = explicitCategoryId || (drag?.type === 'category' ? drag.id : '');
-    setCategoryPointerDrag(null);
-    if (!owner || !categoryId || !targetId || categoryId === targetId) {
-      dragRef.current = null;
-      return;
-    }
-    const ids = swapById(orderedCategories, categoryId, targetId).map((category) => category.id);
-    dragRef.current = null;
+    const targetCategory = visibleCategories[targetIndex];
+    if (!targetCategory) return;
+
+    const ids = swapById(orderedCategories, category.id, targetCategory.id).map((item) => item.id);
     setPendingCategoryIds(ids);
+    setToast({ kind: 'success', message: t('pendingChanges') });
   }
 
   function moveProductInsert(targetCategoryId: string, targetProductId?: string, insertPosition: 'before' | 'after' = 'before', explicitProductId?: string) {
@@ -1982,7 +1894,7 @@ export function CatalogApp() {
               </div>
             )}
             <div className="shop-category-menu">
-              {previewedVisibleCategories.map((category) => {
+              {previewedVisibleCategories.map((category, categoryIndex) => {
                 const products = productsFor(category.id);
                 const isActive = category.id === activeCategoryId;
               return (
@@ -1992,7 +1904,7 @@ export function CatalogApp() {
                     if (node) categoryRefs.current.set(category.id, node);
                     else categoryRefs.current.delete(category.id);
                   }}
-                  className={`shop-accordion${isActive && !backupOpen && !descriptionTemplatesOpen ? ' active' : ''}${categoryPointerDrag?.categoryId === category.id ? ' is-dragging' : ''}${categoryPointerDrag?.targetCategoryId === category.id ? ' is-drop-target' : ''}`}
+                  className={`shop-accordion${isActive && !backupOpen && !descriptionTemplatesOpen ? ' active' : ''}`}
                 >
                   <button
                     type="button"
@@ -2005,13 +1917,35 @@ export function CatalogApp() {
                     }}
                   >
                     {owner && (
-                      <span
-                        className="sidebar-drag-handle"
-                        onPointerDown={(event) => startCategoryPointerDrag(category, event)}
-                        onClick={(event) => event.stopPropagation()}
-                        title={t('moveCategory')} aria-label={t('moveCategory')}
-                      >
-                        <GripVertical size={15} />
+                      <span className="sidebar-order-controls" onClick={(event) => event.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="sidebar-order-button"
+                          disabled={categoryIndex <= 0 || Boolean(busyMessage)}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            moveCategoryStep(category, -1);
+                          }}
+                          title={t('moveUp')}
+                          aria-label={t('moveUp')}
+                        >
+                          <ArrowUp size={11} />
+                        </button>
+                        <button
+                          type="button"
+                          className="sidebar-order-button"
+                          disabled={categoryIndex >= previewedVisibleCategories.length - 1 || Boolean(busyMessage)}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            moveCategoryStep(category, 1);
+                          }}
+                          title={t('moveDown')}
+                          aria-label={t('moveDown')}
+                        >
+                          <ArrowDown size={11} />
+                        </button>
                       </span>
                     )}
                     <CatalogIcon name={category.icon} size={17} />
@@ -2354,25 +2288,6 @@ export function CatalogApp() {
             <span>{formatPrice(draggedProduct, locale, displayCurrency)}</span>
           </div>
           <GripVertical size={18} />
-        </div>
-      )}
-
-      {categoryPointerDrag && draggedCategory && (
-        <div
-          className="category-sort-floating"
-          style={{
-            left: categoryPointerDrag.pointerX - categoryPointerDrag.offsetX,
-            top: categoryPointerDrag.pointerY - categoryPointerDrag.offsetY,
-            width: categoryPointerDrag.width,
-            height: categoryPointerDrag.height,
-          }}
-          aria-hidden="true"
-        >
-          <GripVertical size={15} />
-          <CatalogIcon name={draggedCategory.icon} size={17} />
-          <span>{localizedCategoryTitle(draggedCategory, language)}</span>
-          <small>{productsFor(draggedCategory.id).length}</small>
-          <ChevronDown size={17} />
         </div>
       )}
 

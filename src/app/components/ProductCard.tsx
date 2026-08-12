@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CopyPlus, EllipsisVertical, GripVertical, Pencil, Play, Trash2, Video } from 'lucide-react';
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react';
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CopyPlus, GripVertical, Pencil, Play, Trash2, Video } from 'lucide-react';
+import { useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react';
 import { formatLocalizedPrice, useTranslation } from '../../i18n';
 import { localizedProductName, localizedProductPrice, normalizedPrices } from '../localization';
 import { displayMediaUrl, isVideoMedia, MANSION_PLACEHOLDER_URL, mediaThumbUrl } from '../media';
@@ -70,9 +70,6 @@ export function ProductCard({
 }) {
   const { language, locale, t } = useTranslation();
   const [imageIndex, setImageIndex] = useState(0);
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const [menuDirection, setMenuDirection] = useState<'up' | 'down'>('up');
-  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const images: ProductImage[] = product.images.length ? product.images : [{ id: 'empty', url: '', productId: product.id, order: 0 }];
   const image = images[Math.min(imageIndex, images.length - 1)];
   const productName = localizedProductName(product, language);
@@ -80,47 +77,15 @@ export function ProductCard({
   const imageDisplayUrl = image?.url ? displayMediaUrl(image.url) : MANSION_PLACEHOLDER_URL;
   const isMansionPlaceholder = imageDisplayUrl === MANSION_PLACEHOLDER_URL;
 
-  useEffect(() => {
-    setActionsOpen(false);
-  }, [product.id]);
-
-  useEffect(() => {
-    if (!actionsOpen) return undefined;
-    function close() {
-      setActionsOpen(false);
-    }
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') close();
-    }
-    document.addEventListener('click', close);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('click', close);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [actionsOpen]);
-
   function changeImage(event: MouseEvent, direction: -1 | 1) {
     event.stopPropagation();
     setImageIndex((current) => (current + direction + images.length) % images.length);
   }
 
-  function toggleActions(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    const trigger = menuTriggerRef.current;
-    if (!actionsOpen && trigger) {
-      const rect = trigger.getBoundingClientRect();
-      const estimatedMenuHeight = showOrderActions ? 232 : 150;
-      const hasRoomBelow = rect.bottom + estimatedMenuHeight + 18 < window.innerHeight;
-      setMenuDirection(hasRoomBelow ? 'down' : 'up');
-    }
-    setActionsOpen((current) => !current);
-  }
-
   return (
     <article
       ref={cardRef}
-      className={`product-card${product.sold ? ' is-sold' : ''}${isDragging ? ' is-dragging' : ''}${isDropTarget ? ' is-drop-target' : ''}${actionsOpen ? ' is-menu-open' : ''}`}
+      className={`product-card${product.sold ? ' is-sold' : ''}${isDragging ? ' is-dragging' : ''}${isDropTarget ? ' is-drop-target' : ''}`}
       style={sortStyle}
       onClick={onOpen}
     >
@@ -154,32 +119,16 @@ export function ProductCard({
           )}
         </div>
         {owner && (
-          <div className={`product-action-menu${actionsOpen ? ' open' : ''}`} onClick={(event) => event.stopPropagation()}>
-            <button
-              ref={menuTriggerRef}
-              type="button"
-              className="product-menu-trigger"
-              onClick={toggleActions}
-              aria-haspopup="menu"
-              aria-expanded={actionsOpen}
-              aria-label={`${t('menu')} ${productName}`}
-              title={t('menu')}
-            >
-              <EllipsisVertical size={18} />
-            </button>
-            {actionsOpen && (
-              <div className={`product-actions-popover opens-${menuDirection}`} role="menu">
-                {showOrderActions && (
-                  <>
-                    <button type="button" className="product-order-button" onClick={() => { onMoveUp(); setActionsOpen(false); }} disabled={!canMoveUp} role="menuitem"><ArrowUp size={15} /> {t('moveUp')}</button>
-                    <button type="button" className="product-order-button" onClick={() => { onMoveDown(); setActionsOpen(false); }} disabled={!canMoveDown} role="menuitem"><ArrowDown size={15} /> {t('moveDown')}</button>
-                  </>
-                )}
-                {canEdit && <button type="button" onClick={() => { onEdit(); setActionsOpen(false); }} role="menuitem"><Pencil size={15} /> {t('editProduct')}</button>}
-                {canClone && <button type="button" onClick={() => { onClone(); setActionsOpen(false); }} role="menuitem"><CopyPlus size={15} /> {t('cloneProduct')}</button>}
-                {canDelete && <button type="button" className="danger" onClick={() => { onDelete(); setActionsOpen(false); }} role="menuitem"><Trash2 size={15} /> {t('delete')}</button>}
-              </div>
+          <div className="product-action-menu" onClick={(event) => event.stopPropagation()}>
+            {showOrderActions && (
+              <>
+                <button type="button" className="product-order-button" onClick={onMoveUp} disabled={!canMoveUp} aria-label={t('moveUp')} title={t('moveUp')}><ArrowUp size={16} /></button>
+                <button type="button" className="product-order-button" onClick={onMoveDown} disabled={!canMoveDown} aria-label={t('moveDown')} title={t('moveDown')}><ArrowDown size={16} /></button>
+              </>
             )}
+            {canEdit && <button type="button" onClick={onEdit} aria-label={t('editProduct')} title={t('editProduct')}><Pencil size={16} /></button>}
+            {canClone && <button type="button" onClick={onClone} aria-label={t('cloneProduct')} title={t('cloneProduct')}><CopyPlus size={16} /></button>}
+            {canDelete && <button type="button" className="danger" onClick={onDelete} aria-label={t('delete')} title={t('delete')}><Trash2 size={16} /></button>}
           </div>
         )}
       </div>
