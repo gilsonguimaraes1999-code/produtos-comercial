@@ -1895,6 +1895,7 @@ body,
 .products-grid.is-list .product-card {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
+  width: 100%;
   min-height: 112px;
   overflow: visible;
   border-radius: 14px;
@@ -1918,11 +1919,11 @@ body,
 
 .products-grid.is-list .product-info {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   align-items: center;
   gap: 18px;
-  padding: 16px 18px;
+  padding: 16px 188px 16px 18px;
 }
 
 .products-grid.is-list .product-info h3 {
@@ -4473,14 +4474,25 @@ body,
 }
 
 .products-grid.is-list .product-action-menu {
-  top: 50%;
-  right: 18px;
-  transform: translate(6px, -50%);
+  top: 12px;
+  right: 12px;
+  z-index: 18;
+  display: flex;
+  flex-direction: row;
+  gap: 7px;
+  transform: translateY(-4px);
+}
+
+.products-grid.is-list .product-action-menu button {
+  width: 31px;
+  height: 31px;
+  min-width: 31px;
+  border-radius: 9px;
 }
 
 .products-grid.is-list .product-card:hover .product-action-menu,
 .products-grid.is-list .product-card:focus-within .product-action-menu {
-  transform: translate(0, -50%);
+  transform: translateY(0);
 }
 
 /* Login/request access polish: no glow lines, site-styled selector. */
