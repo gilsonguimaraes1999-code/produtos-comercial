@@ -283,7 +283,10 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
                     <span className="user-avatar"><Clock size={18} /></span>
                     <div><strong>{item.name}</strong><small>@{item.username}</small><small><b>{t('requestedCities')}:</b> {(item.requestedCityNames?.length ? item.requestedCityNames : [item.cityName]).filter(Boolean).join(', ')}</small></div>
                     <div className="city-permission-picker compact" aria-label={t('requestedCitiesBy', { name: item.name })}>
-                      {cities.map((city) => <label key={city.id}><input type="checkbox" checked={(requestCitySelections[item.id] || []).includes(city.id)} onChange={() => setRequestCitySelections((current) => ({ ...current, [item.id]: toggleCity(current[item.id] || [], city.id) }))} /><span>{city.name}</span></label>)}
+                      {cities.map((city) => {
+                        const checked = (requestCitySelections[item.id] || []).includes(city.id);
+                        return <label key={city.id} className={checked ? 'is-checked' : ''}><input type="checkbox" checked={checked} onChange={() => setRequestCitySelections((current) => ({ ...current, [item.id]: toggleCity(current[item.id] || [], city.id) }))} /><span className="remember-dot" aria-hidden="true" /><span>{city.name}</span></label>;
+                      })}
                     </div>
                     <span className={`status-dot request-${item.status.toLowerCase()}`}>{requestStatusLabel(item.status)}</span>
                     <div className="row-actions">
@@ -332,7 +335,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
             <div className="city-permission-picker">
               {cities.map((city) => {
                 const checked = editing.role === 'OWNER' || editing.allowedCityIds.includes(city.id);
-                return <label key={city.id}><input type="checkbox" checked={checked} disabled={editing.role === 'OWNER'} onChange={() => setEditing({ ...editing, allowedCityIds: toggleCity(editing.allowedCityIds, city.id) })} /><span>{city.name}</span></label>;
+                return <label key={city.id} className={checked ? 'is-checked' : ''}><input type="checkbox" checked={checked} disabled={editing.role === 'OWNER'} onChange={() => setEditing({ ...editing, allowedCityIds: toggleCity(editing.allowedCityIds, city.id) })} /><span className="remember-dot" aria-hidden="true" /><span>{city.name}</span></label>;
               })}
             </div>
           </div>

@@ -4860,11 +4860,35 @@ body,
   background: rgba(255,255,255,.025);
   padding: 9px 11px;
   color: rgba(255,255,255,.74);
+  cursor: pointer;
   font-size: 11px;
   font-weight: 800;
 }
 
-.city-permission-picker input { accent-color: var(--gold); }
+.city-permission-picker input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+.city-permission-picker .remember-dot {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border: 1px solid rgba(212,175,55,.5);
+  border-radius: 999px;
+  background: transparent;
+  transition: .2s;
+}
+.city-permission-picker input:checked + .remember-dot {
+  border-color: #e8c141;
+  background: #e8c141;
+}
+.city-permission-picker input:focus-visible + .remember-dot {
+  outline: 2px solid rgba(249,226,159,.55);
+  outline-offset: 3px;
+}
+.city-permission-picker label:has(input:disabled) { cursor: not-allowed; opacity: .72; }
 .city-permission-picker label:has(input:checked) { border-color: rgba(212,175,55,.42); color: #f9e29f; background: rgba(212,175,55,.08); }
 .city-permission-picker.compact { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
 .city-permission-picker.compact label { min-height: 32px; padding: 6px 8px; font-size: 10px; }
