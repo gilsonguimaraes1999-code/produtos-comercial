@@ -371,7 +371,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
       <div className="form-actions"><button type="button" className="secondary-button" onClick={onClose}><ArrowLeft size={16} /> {t('backToCatalog')}</button></div>
 
       {showHistory && (
-        <div className="history-modal-overlay" role="dialog" aria-modal="true" aria-label={t('accessHistoryTitle')}>
+        <div className="history-modal-overlay" role="dialog" aria-modal="true" aria-label={t('accessHistoryTitle')} onMouseDown={(event) => { if (event.target === event.currentTarget) setShowHistory(false); }}>
           <div className="history-modal-card">
             <div className="history-modal-header">
               <div>
@@ -379,7 +379,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
                 <strong>{t('accessHistoryTitle')}</strong>
                 <p>{t('accessHistoryHint')}</p>
               </div>
-              <button type="button" onClick={() => setShowHistory(false)} aria-label={t('close')} title={t('close')}><XCircle size={18} /></button>
+              <button type="button" className="icon-button" onClick={() => setShowHistory(false)} aria-label={t('close')} title={t('close')}><X size={20} /></button>
             </div>
             {historyRequests.length ? (
               <div className="access-requests-list history-modal-list">
