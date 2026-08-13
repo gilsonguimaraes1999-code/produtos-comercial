@@ -161,10 +161,10 @@ export const accessRequestsApi = {
   list(token: string) {
     return request<{ requests: AccessRequest[] }>('listAccessRequests', {}, token);
   },
-  approve(token: string, id: string, role: UserRole = 'COMERCIAL', permissions?: UserPermissions) {
+  approve(token: string, id: string, role: UserRole = 'COMERCIAL', permissions?: UserPermissions, allowedCityIds?: string[]) {
     return request<{ users: AuthUser[]; requests: AccessRequest[] }>(
       'approveAccessRequest',
-      { id, role, permissions },
+      { id, role, permissions, allowedCityIds },
       token,
     );
   },
@@ -192,6 +192,9 @@ export const catalogApi = {
   },
   deleteCity(token: string, id: string) {
     return request<{ catalog: CatalogSnapshot }>('deleteCity', { id }, token);
+  },
+  reorderCities(token: string, cityIds: string[]) {
+    return request<{ catalog: CatalogSnapshot }>('reorderCities', { cityIds }, token);
   },
   deleteCategory(token: string, id: string) {
     return request<{ catalog: CatalogSnapshot }>('deleteCategory', { id }, token);

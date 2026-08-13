@@ -29,6 +29,7 @@ export interface AuthUser {
   username: string;
   role: UserRole;
   permissions?: UserPermissions | undefined;
+  allowedCityIds?: string[] | undefined;
   status: 'Ativo' | 'Desativado';
   createdAt?: string;
   updatedAt?: string;
@@ -39,6 +40,7 @@ export interface AccessRequest {
   name: string;
   username: string;
   cityName: string;
+  requestedCityNames?: string[] | undefined;
   status: AccessRequestStatus;
   approved: boolean;
   createdAt?: string;
@@ -52,6 +54,7 @@ export interface AccessRequestPayload {
   username: string;
   password: string;
   cityName: string;
+  requestedCityNames: string[];
 }
 
 export interface SessionData {
@@ -223,5 +226,6 @@ export interface UserPayload {
   password?: string;
   role: UserRole;
   permissions?: UserPermissions | undefined;
+  allowedCityIds: string[];
   active: boolean;
 }

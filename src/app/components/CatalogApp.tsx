@@ -426,6 +426,7 @@ export function CatalogApp() {
     loading,
     saveCity,
     deleteCity,
+    reorderCities,
     saveCategory,
     deleteCategory,
     reorderCategories,
@@ -995,7 +996,11 @@ export function CatalogApp() {
     }
   }
 
-  const visibleCities = useMemo(() => catalog.cities, [catalog.cities]);
+  const visibleCities = useMemo(() => {
+    if (owner || user?.allowedCityIds === undefined) return catalog.cities;
+    const allowed = new Set(user.allowedCityIds);
+    return catalog.cities.filter((city) => allowed.has(city.id));
+  }, [catalog.cities, owner, user?.allowedCityIds]);
   const visibleCategories = useMemo(
     () => orderedCategories.filter((category) => !activeCityId || category.cityId === activeCityId),
     [activeCityId, orderedCategories],
@@ -1003,13 +1008,13 @@ export function CatalogApp() {
   const previewedVisibleCategories = visibleCategories;
 
   useEffect(() => {
-    if (!catalog.cities.length) {
+    if (!visibleCities.length) {
       setActiveCityId(null);
       setActiveCategoryId(null);
       return;
     }
-    if (!activeCityId || !catalog.cities.some((city) => city.id === activeCityId)) {
-      setActiveCityId(catalog.cities[0]!.id);
+    if (!activeCityId || !visibleCities.some((city) => city.id === activeCityId)) {
+      setActiveCityId(visibleCities[0]!.id);
       return;
     }
     if (!visibleCategories.length) {
@@ -1019,7 +1024,7 @@ export function CatalogApp() {
     if (!activeCategoryId || !visibleCategories.some((category) => category.id === activeCategoryId)) {
       setActiveCategoryId(visibleCategories[0]!.id);
     }
-  }, [activeCategoryId, activeCityId, catalog.categories, catalog.cities, visibleCategories]);
+  }, [activeCategoryId, activeCityId, visibleCategories, visibleCities]);
 
   const productFilter = productQuery.trim().toLowerCase();
   const activeCategory = catalog.categories.find((category) => category.id === activeCategoryId) ?? null;
@@ -1904,7 +1909,7 @@ export function CatalogApp() {
                     if (node) categoryRefs.current.set(category.id, node);
                     else categoryRefs.current.delete(category.id);
                   }}
-                  className={`shop-accordion${isActive && !backupOpen && !descriptionTemplatesOpen ? ' active' : ''}`}
+                  className={`shop-accordion${isActive && !backupOpen && !descriptionTemplatesOpen && !usersOpen ? ' active' : ''}`}
                 >
                   <button
                     type="button"
@@ -1913,6 +1918,7 @@ export function CatalogApp() {
                       setActiveCategoryId(category.id);
                       setBackupOpen(false);
                       setDescriptionTemplatesOpen(false);
+                      setUsersOpen(false);
                       setMenuOpen(false);
                     }}
                   >
@@ -1964,7 +1970,7 @@ export function CatalogApp() {
           <div className="shop-sidebar-foot">
             {owner && (
               <div className="shop-owner-actions">
-                <button type="button" className="shop-menu-item users-button" onClick={() => setUsersOpen(true)}><Users size={17} /> <span className="users-label-gradient">{t('users')}</span></button>
+                <button type="button" className={`shop-menu-item users-button${usersOpen ? ' active' : ''}`} onClick={() => { setUsersOpen(true); setDescriptionTemplatesOpen(false); setBackupOpen(false); setMenuOpen(false); }}><Users size={17} /> <span className="users-label-gradient">{t('users')}</span></button>
                 <button type="button" className="shop-menu-item" onClick={() => setCityModalOpen(true)}><Plus size={17} /> {t('addCity')}</button>
                 <button type="button" className="shop-menu-item" onClick={() => { setDefaultCityId(activeCityId || undefined); setCategoryModal('new'); }}><Plus size={17} /> {t('category')}</button>
                 <button
@@ -1972,11 +1978,12 @@ export function CatalogApp() {
                   className={`shop-menu-item${descriptionTemplatesOpen ? ' active' : ''}`}
                   onClick={() => {
                     setDescriptionTemplatesOpen(true);
+                    setUsersOpen(false);
                     setBackupOpen(false);
                     setMenuOpen(false);
                   }}
                 >
-                  <FileText size={17} /> Descrição Padrão
+                  <FileText size={17} /> {t('standardDescription')}
                 </button>
                 <button
                   type="button"
@@ -1984,6 +1991,7 @@ export function CatalogApp() {
                   onClick={() => {
                     setBackupOpen(true);
                     setDescriptionTemplatesOpen(false);
+                    setUsersOpen(false);
                     setMenuOpen(false);
                   }}
                 >
@@ -2015,7 +2023,9 @@ export function CatalogApp() {
           </div>
 
 
-          {descriptionTemplatesOpen ? (
+          {usersOpen ? (
+            <UserManagement cities={catalog.cities} onClose={() => setUsersOpen(false)} />
+          ) : descriptionTemplatesOpen ? (
             <DescriptionTemplatesPage
               categories={catalog.categories}
               templates={catalog.descriptionTemplates || []}
@@ -2311,6 +2321,7 @@ export function CatalogApp() {
             products={catalog.products}
             onCancel={() => setCityModalOpen(false)}
             onSave={queueCitySave}
+            onReorder={reorderCities}
             onDelete={(city: City) =>
               setConfirmState({
                 title: t('deleteCity'),
@@ -2371,7 +2382,6 @@ export function CatalogApp() {
       )}
 
       {detailProduct && <Modal title={t('productDetails')} onClose={() => setDetailProduct(null)} wide hideEyebrow><ProductDetails product={detailProduct} displayCurrency={displayCurrency} /></Modal>}
-      {usersOpen && <Modal title={t('usersPermissions')} onClose={() => setUsersOpen(false)} wide><UserManagement onClose={() => setUsersOpen(false)} /></Modal>}
 
       {confirmState && (
         <ConfirmDialog

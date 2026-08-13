@@ -16,6 +16,7 @@ interface CatalogContextValue {
   refresh: (force?: boolean) => Promise<void>;
   saveCity: (city: CityPayload) => Promise<void>;
   deleteCity: (id: string) => Promise<void>;
+  reorderCities: (ids: string[]) => Promise<void>;
   saveCategory: (category: CategoryPayload) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   reorderCategories: (ids: string[]) => Promise<void>;
@@ -38,7 +39,7 @@ function normalizeCatalogSnapshot(snapshot: CatalogSnapshot): CatalogSnapshot {
     name: 'SantaGroup',
     order: 0,
   };
-  const cities = Array.isArray(snapshot.cities) && snapshot.cities.length ? snapshot.cities : [fallbackCity];
+  const cities = Array.isArray(snapshot.cities) ? snapshot.cities : [fallbackCity];
   const firstCityId = cities[0]?.id || fallbackCity.id;
   const categories = (snapshot.categories || []).map((category) => ({
     ...category,
@@ -181,6 +182,10 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     },
     async deleteCity(id) {
       const result = await catalogApi.deleteCity(token, id);
+      applyCatalog(result.catalog);
+    },
+    async reorderCities(ids) {
+      const result = await catalogApi.reorderCities(token, ids);
       applyCatalog(result.catalog);
     },
     async saveCategory(category) {

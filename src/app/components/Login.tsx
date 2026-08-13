@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowRight, Building2, ChevronDown, ChevronLeft, Lock, User } from 'lucide-react';
+import { ArrowRight, Building2, Check, ChevronDown, ChevronLeft, Lock, User } from 'lucide-react';
 import { useAuth } from '../auth';
 import { accessRequestsApi } from '../api';
 import { translateAppError, useTranslation } from '../../i18n';
@@ -14,6 +14,7 @@ const blankAccessRequest = {
   username: '',
   password: '',
   cityName: '',
+  requestedCityNames: [] as string[],
 };
 
 export function Login() {
@@ -98,7 +99,8 @@ export function Login() {
       name: requestForm.name.trim(),
       username: requestForm.username.trim(),
       password: requestForm.password,
-      cityName: requestForm.cityName.trim(),
+      cityName: requestForm.requestedCityNames[0] || '',
+      requestedCityNames: requestForm.requestedCityNames,
     };
 
     if (!payload.name || !payload.username || !payload.password || !payload.cityName) {
@@ -255,32 +257,25 @@ export function Login() {
                   >
                     <span className="login-select-value">
                       <Building2 size={17} />
-                      <span>{requestForm.cityName || t('selectCity')}</span>
+                      <span>{requestForm.requestedCityNames.length ? requestForm.requestedCityNames.join(', ') : t('selectCity')}</span>
                     </span>
                     <ChevronDown size={16} className="login-select-caret" />
                   </button>
                   {cityMenuOpen && (
                     <div className="login-select-menu">
-                      <button
-                        type="button"
-                        className={`login-select-option ${!requestForm.cityName ? 'is-selected' : ''}`}
-                        onClick={() => {
-                          setRequestForm({ ...requestForm, cityName: '' });
-                          setCityMenuOpen(false);
-                        }}
-                      >
-                        {t('selectCity')}
-                      </button>
                       {cities.map((city) => (
                         <button
                           type="button"
                           key={city}
-                          className={`login-select-option ${requestForm.cityName === city ? 'is-selected' : ''}`}
+                          className={`login-select-option ${requestForm.requestedCityNames.includes(city) ? 'is-selected' : ''}`}
                           onClick={() => {
-                            setRequestForm({ ...requestForm, cityName: city });
-                            setCityMenuOpen(false);
+                            const selected = requestForm.requestedCityNames.includes(city)
+                              ? requestForm.requestedCityNames.filter((item) => item !== city)
+                              : [...requestForm.requestedCityNames, city];
+                            setRequestForm({ ...requestForm, cityName: selected[0] || '', requestedCityNames: selected });
                           }}
                         >
+                          {requestForm.requestedCityNames.includes(city) && <Check size={15} />}
                           {city}
                         </button>
                       ))}

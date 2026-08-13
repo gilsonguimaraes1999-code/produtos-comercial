@@ -6,9 +6,9 @@ import { CategorySelect } from './CategorySelect';
 import { RichHtmlEditor } from './RichHtmlEditor';
 import { Toast, type ToastState } from './Toast';
 
-const emptyTemplate = (categoryId: string, order: number): DescriptionTemplatePayload => ({
+const emptyTemplate = (categoryId: string, order: number, title: string): DescriptionTemplatePayload => ({
   categoryId,
-  title: 'Novo padrão',
+  title,
   order,
   active: true,
   htmlBR: '',
@@ -29,7 +29,7 @@ export function DescriptionTemplatesPage({
 }) {
   const { t } = useTranslation();
   const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id || '');
-  const [editing, setEditing] = useState<DescriptionTemplatePayload>(() => emptyTemplate(categories[0]?.id || '', 0));
+  const [editing, setEditing] = useState<DescriptionTemplatePayload>(() => emptyTemplate(categories[0]?.id || '', 0, t('newDescriptionTemplate')));
   const [editingId, setEditingId] = useState<string | undefined>();
   const [editorLanguage, setEditorLanguage] = useState<'pt' | 'en' | 'es'>('pt');
   const [saving, setSaving] = useState(false);
@@ -44,7 +44,7 @@ export function DescriptionTemplatesPage({
 
   function startNew() {
     setEditingId(undefined);
-    setEditing(emptyTemplate(selectedCategoryId, categoryTemplates.length));
+    setEditing(emptyTemplate(selectedCategoryId, categoryTemplates.length, t('newDescriptionTemplate')));
     setEditorLanguage('pt');
   }
 
@@ -75,7 +75,7 @@ export function DescriptionTemplatesPage({
     setSaving(true);
     try {
       await onSave({ ...editing, id: editingId, title: editing.title.trim(), categoryId: selectedCategoryId });
-      setToast({ kind: 'success', message: 'Padrão salvo com sucesso.' });
+      setToast({ kind: 'success', message: t('templateSaved') });
     } catch (error) {
       setToast({ kind: 'error', message: translateAppError(error, t, 'genericActionError') });
     } finally {
@@ -88,7 +88,7 @@ export function DescriptionTemplatesPage({
     try {
       await onDelete(template.id);
       if (editingId === template.id) startNew();
-      setToast({ kind: 'success', message: 'Padrão excluído com sucesso.' });
+      setToast({ kind: 'success', message: t('templateDeleted') });
     } catch (error) {
       setToast({ kind: 'error', message: translateAppError(error, t, 'genericDeleteError') });
     } finally {
@@ -105,28 +105,28 @@ export function DescriptionTemplatesPage({
         <span><FileText size={20} /></span>
         <div>
           <p>{t('configuration')}</p>
-          <h1>Descrição Padrão</h1>
-          <small>Crie mais de um HTML por categoria e mantenha versões em PT, EN e ES.</small>
+          <h1>{t('standardDescription')}</h1>
+          <small>{t('standardDescriptionHint')}</small>
         </div>
       </div>
 
       <div className="template-workspace">
         <aside className="template-list-panel">
           <label className="field-label">
-            Categoria
+            {t('category')}
             <CategorySelect
               categories={categories}
               value={selectedCategoryId}
               onChange={(value) => {
                 setSelectedCategoryId(value);
                 setEditingId(undefined);
-                setEditing(emptyTemplate(value, templates.filter((template) => template.categoryId === value).length));
+                setEditing(emptyTemplate(value, templates.filter((template) => template.categoryId === value).length, t('newDescriptionTemplate')));
               }}
             />
           </label>
 
           <button type="button" className="primary-button compact" onClick={startNew}>
-            <Plus size={16} /> Novo padrão
+            <Plus size={16} /> {t('newDescriptionTemplate')}
           </button>
 
           <div className="template-list">
@@ -141,18 +141,18 @@ export function DescriptionTemplatesPage({
                 </button>
               </article>
             ))}
-            {!categoryTemplates.length && <p>Nenhum padrão criado para esta categoria.</p>}
+            {!categoryTemplates.length && <p>{t('noDescriptionTemplates')}</p>}
           </div>
         </aside>
 
         <form className="template-editor-panel" onSubmit={(event) => { event.preventDefault(); void save(); }}>
           <div className="two-columns">
             <label className="field-label">
-              Nome do padrão
+              {t('templateName')}
               <input value={editing.title} onChange={(event) => setEditing((current) => ({ ...current, title: event.target.value }))} maxLength={120} />
             </label>
             <label className="field-label">
-              Ordem
+              {t('templateOrder')}
               <input
                 type="number"
                 min={0}
@@ -165,7 +165,7 @@ export function DescriptionTemplatesPage({
           <label className="remember-row template-active-row">
             <input type="checkbox" checked={editing.active} onChange={(event) => setEditing((current) => ({ ...current, active: event.target.checked }))} />
             <span className="remember-dot" />
-            Padrão ativo
+            {t('activeTemplate')}
           </label>
 
           <div className="template-language-tabs">
@@ -179,13 +179,13 @@ export function DescriptionTemplatesPage({
           <RichHtmlEditor value={currentHtml} onChange={updateHtml} />
 
           <div className="template-help">
-            Variáveis disponíveis: <code>{'{{nome}}'}</code>, <code>{'{{armazenamento}}'}</code>, <code>{'{{cds}}'}</code>.
+            {t('availableVariables')}: <code>{'{{nome}}'}</code>, <code>{'{{armazenamento}}'}</code>, <code>{'{{cds}}'}</code>.
           </div>
 
           <div className="form-actions">
             <button type="button" className="secondary-button" onClick={startNew}>{t('cancel')}</button>
             <button type="submit" className="primary-button" disabled={saving || !selectedCategoryId}>
-              <Save size={16} /> {saving ? t('saving') : 'Salvar padrão'}
+              <Save size={16} /> {saving ? t('saving') : t('saveTemplate')}
             </button>
           </div>
         </form>
