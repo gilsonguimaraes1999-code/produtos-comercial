@@ -1013,6 +1013,7 @@ function listUsers_(token) {
 
 function listAccessCities_() {
   var cities = readTable_('Cities')
+    .sort(orderSorter_)
     .map(function (city) {
       return String(
         city.name || ''
@@ -1033,12 +1034,6 @@ function listAccessCities_() {
 
       seen[key] = true;
       return true;
-    }
-  );
-
-  cities.sort(
-    function (a, b) {
-      return a.localeCompare(b);
     }
   );
 
@@ -1070,16 +1065,10 @@ function requestAccess_(input) {
   if (!requestedCityNames.length && cityName) requestedCityNames = [cityName];
   cityName = requestedCityNames[0] || cityName;
 
-  if (
-    !name ||
-    !username ||
-    !password ||
-    !requestedCityNames.length
-  ) {
-    throw new Error(
-      'Preencha todos os dados da solicitacao.'
-    );
-  }
+  if (!name) throw new Error('O nome de exibicao e obrigatorio.');
+  if (!username) throw new Error('O nome de usuario e obrigatorio.');
+  if (!password) throw new Error('A senha e obrigatoria.');
+  if (!requestedCityNames.length) throw new Error('Selecione ao menos uma cidade.');
 
   if (password.length < 8) {
     throw new Error(
@@ -1141,6 +1130,10 @@ function requestAccess_(input) {
         pendingIndex = j;
         break;
       }
+    }
+
+    if (pendingIndex !== -1) {
+      throw new Error('Ja existe uma solicitacao pendente para este usuario.');
     }
 
     var now = now_();
@@ -2390,7 +2383,7 @@ function reorderCities_(token, cityIds) {
       if (citiesById[id]) ordered.push(city);
     });
 
-    normalizeOrders_(ordered);
+    assignOrdersInCurrentSequence_(ordered);
     writeTable_('Cities', ordered);
     bumpCatalogRevision_();
 
@@ -2630,7 +2623,7 @@ function reorderCategories_(
       }
     );
 
-    normalizeOrders_(
+    assignOrdersInCurrentSequence_(
       ordered
     );
 
@@ -6514,6 +6507,20 @@ function normalizeOrders_(
     ) {
       item.order =
         index;
+    }
+  );
+}
+
+
+function assignOrdersInCurrentSequence_(
+  items
+) {
+  items.forEach(
+    function (
+      item,
+      index
+    ) {
+      item.order = index;
     }
   );
 }
