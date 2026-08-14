@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowRight, Building2, Check, ChevronDown, ChevronLeft, Lock, User } from 'lucide-react';
+import { ArrowRight, Building2, ChevronDown, ChevronLeft, Lock, User } from 'lucide-react';
 import { useAuth } from '../auth';
 import { accessRequestsApi } from '../api';
 import { translateAppError, useTranslation } from '../../i18n';
@@ -103,10 +103,12 @@ export function Login() {
       requestedCityNames: requestForm.requestedCityNames,
     };
 
-    if (!payload.name || !payload.username || !payload.password || !payload.cityName) {
-      setError(t('fillAccessRequest'));
-      return;
-    }
+    if (!payload.name) return setError(t('accessNameRequired'));
+    if (!payload.username) return setError(t('accessUsernameRequired'));
+    if (!payload.password) return setError(t('accessPasswordRequired'));
+    if (!payload.cityName) return setError(t('accessCityRequired'));
+
+    if (/\s/.test(payload.username)) return setError(t('usernameInvalid'));
 
     if (payload.password.length < 8) {
       setError(t('passwordMinLength'));
@@ -256,29 +258,33 @@ export function Login() {
                     aria-expanded={cityMenuOpen}
                   >
                     <span className="login-select-value">
-                      <Building2 size={17} />
+                      <span className="login-select-icon" aria-hidden="true"><Building2 size={15} /></span>
                       <span>{requestForm.requestedCityNames.length ? requestForm.requestedCityNames.join(', ') : t('selectCity')}</span>
                     </span>
                     <ChevronDown size={16} className="login-select-caret" />
                   </button>
                   {cityMenuOpen && (
                     <div className="login-select-menu">
-                      {cities.map((city) => (
+                      {cities.map((city) => {
+                        const selected = requestForm.requestedCityNames.includes(city);
+                        return (
                         <button
                           type="button"
                           key={city}
-                          className={`login-select-option ${requestForm.requestedCityNames.includes(city) ? 'is-selected' : ''}`}
+                          className={`login-select-option ${selected ? 'is-selected' : ''}`}
+                          aria-pressed={selected}
                           onClick={() => {
-                            const selected = requestForm.requestedCityNames.includes(city)
+                            const nextSelection = selected
                               ? requestForm.requestedCityNames.filter((item) => item !== city)
                               : [...requestForm.requestedCityNames, city];
-                            setRequestForm({ ...requestForm, cityName: selected[0] || '', requestedCityNames: selected });
+                            setRequestForm({ ...requestForm, cityName: nextSelection[0] || '', requestedCityNames: nextSelection });
                           }}
                         >
-                          {requestForm.requestedCityNames.includes(city) && <Check size={15} />}
-                          {city}
+                          <span className="login-select-dot" aria-hidden="true" />
+                          <span>{city}</span>
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

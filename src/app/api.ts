@@ -46,7 +46,15 @@ export type ApiErrorCode =
   | 'INVALID_CURRENCY'
   | 'IMAGE_REQUIRED'
   | 'INVALID_IMAGE_CONTENT'
-  | 'UPLOAD_FAILED';
+  | 'UPLOAD_FAILED'
+  | 'ACCESS_NAME_REQUIRED'
+  | 'ACCESS_USERNAME_REQUIRED'
+  | 'ACCESS_PASSWORD_REQUIRED'
+  | 'ACCESS_CITY_REQUIRED'
+  | 'USERNAME_INVALID'
+  | 'USERNAME_IN_USE'
+  | 'ACCESS_REQUEST_PENDING'
+  | 'INVALID_ACCESS_CITY';
 
 export class ApiError extends Error {
   readonly code: ApiErrorCode;
@@ -65,10 +73,20 @@ function inferApiErrorCode(message: string, explicitCode?: string): ApiErrorCode
     'API_NOT_CONFIGURED', 'REQUEST_TIMEOUT', 'NETWORK_ERROR', 'INVALID_RESPONSE', 'REQUEST_FAILED',
     'INVALID_CREDENTIALS', 'SESSION_EXPIRED', 'OWNER_REQUIRED', 'CATEGORY_NOT_FOUND', 'PRODUCT_NOT_FOUND',
     'USER_NOT_FOUND', 'INVALID_CURRENCY', 'IMAGE_REQUIRED', 'INVALID_IMAGE_CONTENT', 'UPLOAD_FAILED',
+    'ACCESS_NAME_REQUIRED', 'ACCESS_USERNAME_REQUIRED', 'ACCESS_PASSWORD_REQUIRED', 'ACCESS_CITY_REQUIRED',
+    'USERNAME_INVALID', 'USERNAME_IN_USE', 'ACCESS_REQUEST_PENDING', 'INVALID_ACCESS_CITY',
   ];
   if (explicitCode && knownCodes.includes(explicitCode as ApiErrorCode)) return explicitCode as ApiErrorCode;
 
   const value = message.toLowerCase();
+  if (/nome de exibi[cç][aã]o.*obrig|display name.*required/.test(value)) return 'ACCESS_NAME_REQUIRED';
+  if (/nome de usu[aá]rio.*obrig|username.*required/.test(value)) return 'ACCESS_USERNAME_REQUIRED';
+  if (/senha.*obrig|password.*required/.test(value)) return 'ACCESS_PASSWORD_REQUIRED';
+  if (/selecione.*(?:uma|ao menos uma).*cidade|select.*(?:a|at least one).*cit/.test(value)) return 'ACCESS_CITY_REQUIRED';
+  if (/usu[aá]rio.*n[aã]o pode conter espa[cç]os|username.*spaces/.test(value)) return 'USERNAME_INVALID';
+  if (/nome de usu[aá]rio.*(?:j[aá].*)?(?:em uso|exist)|username.*(?:in use|exist)/.test(value)) return 'USERNAME_IN_USE';
+  if (/solicita[cç][aã]o pendente|pending.*request/.test(value)) return 'ACCESS_REQUEST_PENDING';
+  if (/cidades? v[aá]lidas?|invalid cit/.test(value)) return 'INVALID_ACCESS_CITY';
   if (/credenciais|credentials/.test(value)) return 'INVALID_CREDENTIALS';
   if (/sess[aã]o.*expir|session.*expir/.test(value)) return 'SESSION_EXPIRED';
   if (/apenas.*owner|only.*owner|cargo owner/.test(value)) return 'OWNER_REQUIRED';
