@@ -96,7 +96,15 @@ export function Login() {
 
   function backToLogin() {
     setMode('login');
+    setStep('start');
     setCityMenuOpen(false);
+    setError('');
+    setSuccess('');
+  }
+
+  function backToLobby() {
+    setStep('start');
+    setPassword('');
     setError('');
     setSuccess('');
   }
@@ -177,6 +185,10 @@ export function Login() {
           {mode === 'login' && step === 'user' && (
             <form onSubmit={submitUsername} className="login-form login-step-enter">
               {error && <p className="form-error">{error}</p>}
+              <button type="button" className="back-login login-lobby-back" onClick={backToLobby}>
+                <ChevronLeft size={14} strokeWidth={3} />
+                <span>{t('backToLobby')}</span>
+              </button>
               <div className="login-input-shell">
                 <User size={17} />
                 <input autoFocus value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t('username')} />
@@ -188,10 +200,16 @@ export function Login() {
           {mode === 'login' && step === 'password' && (
             <form onSubmit={submitLogin} className="login-form login-step-enter">
               {error && <p className="form-error">{error}</p>}
-              <button type="button" className="back-login" onClick={() => { setStep('user'); setError(''); }}>
-                <ChevronLeft size={14} strokeWidth={3} />
-                <span>{t('backToUser')}</span>
-              </button>
+              <div className="login-back-actions">
+                <button type="button" className="back-login" onClick={() => { setStep('user'); setError(''); }}>
+                  <ChevronLeft size={14} strokeWidth={3} />
+                  <span>{t('backToUser')}</span>
+                </button>
+                <button type="button" className="back-login login-lobby-back" onClick={backToLobby}>
+                  <ChevronLeft size={14} strokeWidth={3} />
+                  <span>{t('backToLobby')}</span>
+                </button>
+              </div>
               <div className="login-input-shell">
                 <Lock size={17} />
                 <input

@@ -1292,6 +1292,10 @@ h1, h2, h3, h4, p, span, small, strong, label, li { color: inherit; }
   font-size: 11px; font-weight: 800; letter-spacing: .18em;
 }
 .back-login:hover { background: transparent; border: 0; color: rgba(255,255,255,.75); }
+.login-back-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.login-back-actions .back-login { margin: 0; }
+.back-login.login-lobby-back { color: rgba(232,193,65,.72); }
+.back-login.login-lobby-back:hover { color: #f6d66d; }
 
 .remember-row {
   gap: 9px; margin-top: 16px; color: rgba(255,255,255,.45);
