@@ -41,7 +41,8 @@ var TABLES = {
     'updatedAt',
     'reviewedAt',
     'reviewedBy',
-    'requestedCityNames'
+    'requestedCityNames',
+    'approvedCityIds'
   ],
 
   Sessions: [
@@ -313,6 +314,12 @@ function doPost(event) {
             body.username,
             body.password
           )
+        });
+
+      case 'viewerLogin':
+        return json_({
+          success: true,
+          data: viewerLogin_(body.cityName)
         });
 
       case 'validateSession':
@@ -742,6 +749,50 @@ function login_(username, password) {
   });
 }
 
+function viewerUserForCity_(city) {
+  return {
+    id: 'viewer:' + String(city.id || ''),
+    name: String(city.name || ''),
+    username: 'visualizador',
+    role: 'COMERCIAL',
+    status: 'Ativo',
+    permissions: { product: {} },
+    allowedCityIds: [String(city.id || '')]
+  };
+}
+
+function viewerUserFromToken_(token) {
+  var prefix = 'viewer:';
+  token = String(token || '').trim();
+  if (token.indexOf(prefix) !== 0) return null;
+
+  var cityId = token.substring(prefix.length);
+  var cities = readTable_('Cities');
+  for (var i = 0; i < cities.length; i++) {
+    if (String(cities[i].id || '') === cityId) return viewerUserForCity_(cities[i]);
+  }
+  return null;
+}
+
+function viewerLogin_(cityName) {
+  var requested = String(cityName || '').trim().toLowerCase();
+  if (!requested) throw new Error('Selecione uma cidade para visualizar.');
+
+  var cities = readTable_('Cities').sort(orderSorter_);
+  for (var i = 0; i < cities.length; i++) {
+    if (String(cities[i].name || '').trim().toLowerCase() === requested) {
+      var user = viewerUserForCity_(cities[i]);
+      return {
+        token: 'viewer:' + String(cities[i].id || ''),
+        user: publicUser_(user),
+        catalog: readCatalog_(null, user)
+      };
+    }
+  }
+
+  throw new Error('A cidade selecionada não está mais disponível.');
+}
+
 
 function requireSession_(token) {
   token = String(
@@ -753,6 +804,9 @@ function requireSession_(token) {
       'SessÃ£o nÃ£o informada.'
     );
   }
+
+  var viewerUser = viewerUserFromToken_(token);
+  if (viewerUser) return viewerUser;
 
   var cache =
     CacheService.getScriptCache();
@@ -869,6 +923,9 @@ function productPermissions_(permissions) {
   var product = source.product && typeof source.product === 'object'
     ? source.product
     : {};
+  var accessRequests = source.accessRequests && typeof source.accessRequests === 'object'
+    ? source.accessRequests
+    : {};
   var normalized = {};
 
   PRODUCT_PERMISSIONS.forEach(function (permission) {
@@ -876,7 +933,10 @@ function productPermissions_(permissions) {
   });
 
   return {
-    product: normalized
+    product: normalized,
+    accessRequests: {
+      manageAssignedCities: accessRequests.manageAssignedCities === true || source.manageAssignedCityRequests === true
+    }
   };
 }
 
@@ -959,6 +1019,45 @@ function requireProductPermission_(token, permission) {
   return user;
 }
 
+function canManageAccessRequests_(user) {
+  if (!user) return false;
+  if (user.role === 'OWNER') return true;
+  return productPermissions_(user.permissions).accessRequests.manageAssignedCities === true;
+}
+
+function requireAccessRequestManager_(token) {
+  var user = requireSession_(token);
+  if (!canManageAccessRequests_(user)) {
+    throw new Error('Sua conta nao tem permissao para gerenciar solicitacoes de acesso.');
+  }
+  return user;
+}
+
+function requestedCityIdsForAccessRequest_(accessRequest, cities) {
+  var names = stringList_(accessRequest && accessRequest.requestedCityNames);
+  if (!names.length && accessRequest && accessRequest.cityName) names = [String(accessRequest.cityName)];
+  return (cities || readTable_('Cities')).filter(function (city) {
+    return names.some(function (name) {
+      return String(name || '').trim().toLowerCase() === String(city.name || '').trim().toLowerCase();
+    });
+  }).map(function (city) { return String(city.id || '').trim(); }).filter(Boolean);
+}
+
+function accessRequestWithinUserScope_(user, accessRequest, cities) {
+  if (user && user.role === 'OWNER') return true;
+  var requestedIds = requestedCityIdsForAccessRequest_(accessRequest, cities);
+  var allowedIds = allowedCityIdsForUser_(user, cities);
+  return requestedIds.length > 0 && requestedIds.every(function (id) { return allowedIds.indexOf(id) !== -1; });
+}
+
+function publicAccessRequestsForUser_(user, requests, cities, users) {
+  return (requests || []).filter(function (item) {
+    return accessRequestWithinUserScope_(user, item, cities);
+  }).map(function (item) {
+    return publicAccessRequest_(item, users, cities);
+  }).sort(sortAccessRequests_);
+}
+
 
 function logout_(token) {
   token = String(
@@ -969,6 +1068,10 @@ function logout_(token) {
     return {
       loggedOut: true
     };
+  }
+
+  if (token.indexOf('viewer:') === 0) {
+    return { loggedOut: true };
   }
 
   return withLock_(function () {
@@ -1155,6 +1258,7 @@ function requestAccess_(input) {
       passwordSalt: salt,
       cityName: cityName,
       requestedCityNames: JSON.stringify(requestedCityNames),
+      approvedCityIds: '[]',
       status: 'PENDENTE',
       approved: false,
       createdAt:
@@ -1185,19 +1289,20 @@ function requestAccess_(input) {
 
 
 function listAccessRequests_(token) {
-  requireOwner_(token);
+  var currentUser = requireAccessRequestManager_(token);
+  var cities = readTable_('Cities');
+  var users = readTable_('Users');
 
   return {
-    requests: readTable_('SolicitacoesAcesso')
-      .map(publicAccessRequest_)
-      .sort(sortAccessRequests_)
+    requests: publicAccessRequestsForUser_(currentUser, readTable_('SolicitacoesAcesso'), cities, users)
   };
 }
 
 
 function approveAccessRequest_(token, id, role, permissions, allowedCityIds) {
   var currentUser =
-    requireOwner_(token);
+    requireAccessRequestManager_(token);
+  var owner = currentUser.role === 'OWNER';
 
   id = String(
     id || ''
@@ -1210,7 +1315,7 @@ function approveAccessRequest_(token, id, role, permissions, allowedCityIds) {
   }
 
   role = String(
-    role || 'COMERCIAL'
+    owner ? role || 'COMERCIAL' : 'COMERCIAL'
   ).toUpperCase();
 
   if (
@@ -1222,7 +1327,7 @@ function approveAccessRequest_(token, id, role, permissions, allowedCityIds) {
   }
 
   var normalizedPermissions =
-    productPermissions_(permissions);
+    productPermissions_(owner ? permissions : {});
 
   return withLock_(function () {
     var requests =
@@ -1244,7 +1349,11 @@ function approveAccessRequest_(token, id, role, permissions, allowedCityIds) {
       requests[requestIndex];
 
     var cities = readTable_('Cities');
+    if (!accessRequestWithinUserScope_(currentUser, accessRequest, cities)) {
+      throw new Error('Esta solicitacao inclui uma cidade fora da sua permissao.');
+    }
     var approvedCityIds = stringList_(allowedCityIds);
+    if (!owner) approvedCityIds = requestedCityIdsForAccessRequest_(accessRequest, cities);
     if (!approvedCityIds.length) {
       var requestedNames = stringList_(accessRequest.requestedCityNames);
       if (!requestedNames.length && accessRequest.cityName) requestedNames = [String(accessRequest.cityName)];
@@ -1359,6 +1468,8 @@ function approveAccessRequest_(token, id, role, permissions, allowedCityIds) {
       currentUser.username ||
       currentUser.name ||
       currentUser.id;
+    accessRequest.approvedCityIds =
+      allowedCityIdsCellValue_(approvedCityIds);
 
     requests[requestIndex] =
       accessRequest;
@@ -1380,12 +1491,8 @@ function approveAccessRequest_(token, id, role, permissions, allowedCityIds) {
     bumpCatalogRevision_();
 
     return {
-      users: users
-        .map(publicUser_)
-        .sort(sortUsers_),
-      requests: requests
-        .map(publicAccessRequest_)
-        .sort(sortAccessRequests_)
+      users: owner ? users.map(publicUser_).sort(sortUsers_) : [],
+      requests: publicAccessRequestsForUser_(currentUser, requests, cities, users)
     };
   });
 }
@@ -1393,7 +1500,7 @@ function approveAccessRequest_(token, id, role, permissions, allowedCityIds) {
 
 function rejectAccessRequest_(token, id) {
   var currentUser =
-    requireOwner_(token);
+    requireAccessRequestManager_(token);
 
   id = String(
     id || ''
@@ -1421,6 +1528,11 @@ function rejectAccessRequest_(token, id) {
       );
     }
 
+    var cities = readTable_('Cities');
+    if (!accessRequestWithinUserScope_(currentUser, requests[index], cities)) {
+      throw new Error('Esta solicitacao inclui uma cidade fora da sua permissao.');
+    }
+
     var now = now_();
 
     requests[index].status =
@@ -1442,9 +1554,7 @@ function rejectAccessRequest_(token, id) {
     );
 
     return {
-      requests: requests
-        .map(publicAccessRequest_)
-        .sort(sortAccessRequests_)
+      requests: publicAccessRequestsForUser_(currentUser, requests, cities, readTable_('Users'))
     };
   });
 }
@@ -1844,6 +1954,7 @@ function markAccessRequestRemoved_(user, currentUser) {
       passwordSalt: '',
       cityName: '',
       requestedCityNames: '[]',
+      approvedCityIds: allowedCityIdsCellValue_(allowedCityIdsForUser_(user)),
       status: 'REMOVIDO',
       approved: false,
       createdAt: user.createdAt || now,
@@ -1852,6 +1963,9 @@ function markAccessRequestRemoved_(user, currentUser) {
       reviewedBy: reviewedBy
     });
   } else {
+    if (!stringList_(requests[targetIndex].approvedCityIds).length) {
+      requests[targetIndex].approvedCityIds = allowedCityIdsCellValue_(allowedCityIdsForUser_(user));
+    }
     requests[targetIndex].status =
       'REMOVIDO';
     requests[targetIndex].approved =
@@ -1871,7 +1985,20 @@ function markAccessRequestRemoved_(user, currentUser) {
 }
 
 
-function publicAccessRequest_(accessRequest) {
+function approvedCityIdsForAccessRequest_(accessRequest, users, cities) {
+  var stored = stringList_(accessRequest.approvedCityIds);
+  if (stored.length) return stored;
+  var username = String(accessRequest.username || '').trim().toLowerCase();
+  if (!username || !users) return [];
+  for (var i = 0; i < users.length; i++) {
+    if (String(users[i].username || '').trim().toLowerCase() === username) {
+      return allowedCityIdsForUser_(users[i], cities);
+    }
+  }
+  return [];
+}
+
+function publicAccessRequest_(accessRequest, users, cities) {
   var requestedCityNames = stringList_(accessRequest.requestedCityNames);
   if (!requestedCityNames.length && accessRequest.cityName) requestedCityNames = [String(accessRequest.cityName)];
   return {
@@ -1880,6 +2007,7 @@ function publicAccessRequest_(accessRequest) {
     username: accessRequest.username,
     cityName: accessRequest.cityName,
     requestedCityNames: requestedCityNames,
+    approvedCityIds: approvedCityIdsForAccessRequest_(accessRequest, users, cities),
     status: String(
       accessRequest.status ||
       'PENDENTE'
@@ -4436,6 +4564,104 @@ function translateWithDeepL_(
 }
 
 
+function catalogLiteralTranslation_(
+  value,
+  targetLanguage
+) {
+  var normalized = String(value || '')
+    .trim()
+    .toLowerCase();
+  var target = normalizeContentLanguage_(targetLanguage);
+  var glossary = {
+    'modification': {
+      pt: 'Modificação',
+      en: 'Modification',
+      es: 'Modificación'
+    },
+    'modifications': {
+      pt: 'Modificações',
+      en: 'Modifications',
+      es: 'Modificaciones'
+    },
+    'change': {
+      pt: 'Alteração',
+      en: 'Change',
+      es: 'Cambio'
+    },
+    'changes': {
+      pt: 'Alterações',
+      en: 'Changes',
+      es: 'Cambios'
+    }
+  };
+
+  return glossary[normalized]
+    ? glossary[normalized][target] || ''
+    : '';
+}
+
+function catalogGlossaryKey_(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function normalizeCatalogLiteralTranslations_(values) {
+  values = values || {};
+  var br = String(values.br || values.pt || '').trim();
+  var en = String(values.en || '').trim();
+  var es = String(values.es || '').trim();
+  var keys = [br, en, es].map(catalogGlossaryKey_);
+  var modificationAliases = {
+    modification: true,
+    modifications: true,
+    modificacao: true,
+    modificacoes: true,
+    modificacion: true,
+    modificaciones: true
+  };
+  var changeAliases = {
+    change: true,
+    changes: true,
+    cambio: true,
+    cambios: true
+  };
+  var isModification = keys.some(function (key) {
+    return Boolean(modificationAliases[key]);
+  });
+  var isChange = !isModification && keys.some(function (key) {
+    return Boolean(changeAliases[key]);
+  });
+
+  if (isModification) {
+    return {
+      br: 'Modificações',
+      pt: 'Modificações',
+      en: 'Modifications',
+      es: 'Modificaciones'
+    };
+  }
+
+  if (isChange) {
+    return {
+      br: 'Alterações',
+      pt: 'Alterações',
+      en: 'Changes',
+      es: 'Cambios'
+    };
+  }
+
+  return {
+    br: br,
+    pt: br,
+    en: en,
+    es: es
+  };
+}
+
+
 function translateCatalogText_(
   value,
   sourceLanguage
@@ -4469,6 +4695,10 @@ function translateCatalogText_(
 
       try {
         result[target] =
+          catalogLiteralTranslation_(
+            text,
+            target
+          ) ||
           translateWithDeepL_(
             text,
             source,
@@ -4496,7 +4726,12 @@ function translateCatalogText_(
     }
   );
 
-  return result;
+  var normalizedResult = normalizeCatalogLiteralTranslations_(result);
+  return {
+    pt: normalizedResult.pt,
+    en: normalizedResult.en,
+    es: normalizedResult.es
+  };
 }
 
 function translateCatalogTextAuto_(
@@ -5067,11 +5302,63 @@ function localizedRowValues_(row, field) {
     br = br || plainBase;
   }
 
-  return {
+  return normalizeCatalogLiteralTranslations_({
     br: br || en || es || '',
     en: en || br || es || '',
     es: es || br || en || ''
-  };
+  });
+}
+
+function repairCatalogGlossaryTranslations() {
+  assertConfigured_();
+
+  return withLock_(function () {
+    var updated = 0;
+    var categories = readTable_('Categories');
+    var products = readProducts_();
+
+    categories.forEach(function (category) {
+      var names = normalizeCatalogLiteralTranslations_(localizedRowValues_(category, 'title'));
+      var before = [category.title, category.titleBR, category.titleEN, category.titleES].join('\n');
+      var after = [names.br, names.br, names.en, names.es].join('\n');
+
+      if (before !== after) {
+        category.title = names.br;
+        category.titleBR = names.br;
+        category.titleEN = names.en;
+        category.titleES = names.es;
+        category.updatedAt = now_();
+        updated += 1;
+      }
+    });
+
+    products.forEach(function (product) {
+      var names = normalizeCatalogLiteralTranslations_(localizedRowValues_(product, 'name'));
+      var before = [product.name, product.nameBR, product.nameEN, product.nameES].join('\n');
+      var after = [names.br, names.br, names.en, names.es].join('\n');
+
+      if (before !== after) {
+        product.name = names.br;
+        product.nameBR = names.br;
+        product.nameEN = names.en;
+        product.nameES = names.es;
+        product.updatedAt = now_();
+        updated += 1;
+      }
+    });
+
+    if (updated) {
+      writeTable_('Categories', categories);
+      writeProducts_(products);
+      bumpCatalogRevision_();
+    }
+
+    return {
+      success: true,
+      updated: updated,
+      revision: getCatalogRevision_()
+    };
+  });
 }
 
 function stripHtmlForCompare_(html) {
