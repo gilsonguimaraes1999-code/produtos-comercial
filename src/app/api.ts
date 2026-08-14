@@ -161,6 +161,9 @@ export const authApi = {
   login(username: string, password: string) {
     return request<SessionData>('login', { username, password }, undefined, LOGIN_TIMEOUT_MS);
   },
+  viewerLogin(cityName: string) {
+    return request<SessionData>('viewerLogin', { cityName }, undefined, LOGIN_TIMEOUT_MS);
+  },
   validate(token: string) {
     return request<{ user: AuthUser }>('validateSession', {}, token);
   },

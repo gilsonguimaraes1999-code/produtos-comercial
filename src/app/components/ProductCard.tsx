@@ -93,13 +93,13 @@ export function ProductCard({
         {image?.url ? (
           isVideoMedia(image) ? (
             <div className="product-video-cover">
-              {mediaThumbUrl(image) ? <img src={mediaThumbUrl(image)} alt={productName} referrerPolicy="no-referrer" loading="eager" decoding="async" fetchPriority="high" /> : <Video size={34} />}
+              {mediaThumbUrl(image) ? <img src={mediaThumbUrl(image)} alt={productName} referrerPolicy="no-referrer" loading="lazy" decoding="async" /> : <Video size={34} />}
               <span><Play size={16} fill="currentColor" /></span>
             </div>
           ) : (
-            <img src={imageDisplayUrl} alt={productName} referrerPolicy="no-referrer" loading="eager" decoding="async" fetchPriority="high" />
+            <img src={imageDisplayUrl} alt={productName} referrerPolicy="no-referrer" loading="lazy" decoding="async" />
           )
-        ) : <img src={MANSION_PLACEHOLDER_URL} alt={productName} referrerPolicy="no-referrer" loading="eager" decoding="async" fetchPriority="high" />}
+        ) : <img src={MANSION_PLACEHOLDER_URL} alt={productName} referrerPolicy="no-referrer" loading="lazy" decoding="async" />}
         {images.length > 1 && (
           <>
             <button type="button" className="carousel-arrow left" onClick={(event) => changeImage(event, -1)} aria-label={t('previousImage')} title={t('previousImage')}><ChevronLeft size={18} /></button>

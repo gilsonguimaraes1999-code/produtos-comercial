@@ -43,8 +43,10 @@ export function preloadImage(url: string, timeoutMs = 7000): Promise<void> {
 }
 
 export async function preloadCriticalAssets() {
-  const assets = ['/alpha-logo.png', '/catalog-bg.png', '/product-area-bg.png', '/cursor-custom.png'];
-  await Promise.all(assets.map((asset) => preloadImage(asset, 5000)));
+  await preloadImage('/alpha-logo.png', 2500);
+  ['/catalog-bg.png', '/product-area-bg.png', '/cursor-custom.png'].forEach((asset) => {
+    void preloadImage(asset, 5000);
+  });
 }
 
 export async function preloadCatalogCovers(catalog: CatalogSnapshot) {

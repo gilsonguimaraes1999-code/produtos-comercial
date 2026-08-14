@@ -7,7 +7,7 @@ import { StarfieldBackground } from './StarfieldBackground';
 
 const SAVED_LOGIN_KEY = 'sg_showcase_saved_login';
 type LoginStep = 'start' | 'user' | 'password';
-type LoginMode = 'login' | 'request';
+type LoginMode = 'login' | 'request' | 'viewer';
 
 const blankAccessRequest = {
   name: '',
@@ -18,7 +18,7 @@ const blankAccessRequest = {
 };
 
 export function Login() {
-  const { login } = useAuth();
+  const { login, loginAsViewer } = useAuth();
   const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +31,7 @@ export function Login() {
   const [cities, setCities] = useState<string[]>([]);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [requestForm, setRequestForm] = useState(blankAccessRequest);
+  const [viewerCity, setViewerCity] = useState('');
 
   useEffect(() => {
     try {
@@ -43,7 +44,7 @@ export function Login() {
   }, []);
 
   useEffect(() => {
-    if (mode !== 'request' || cities.length) return;
+    if (mode === 'login' || cities.length) return;
 
     accessRequestsApi.cities()
       .then((result) => setCities(result.cities))
@@ -81,6 +82,13 @@ export function Login() {
 
   function openRequestAccess() {
     setMode('request');
+    setCityMenuOpen(false);
+    setError('');
+    setSuccess('');
+  }
+
+  function openViewerAccess() {
+    setMode('viewer');
     setCityMenuOpen(false);
     setError('');
     setSuccess('');
@@ -131,6 +139,21 @@ export function Login() {
     }
   }
 
+  async function submitViewerAccess(event: FormEvent) {
+    event.preventDefault();
+    if (!viewerCity) return setError(t('viewerCityRequired'));
+    setLoading(true);
+    setError('');
+    try {
+      await loginAsViewer(viewerCity);
+    } catch (err) {
+      console.error(err);
+      setError(translateAppError(err, t, 'requestFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="login-page">
       <StarfieldBackground />
@@ -141,12 +164,12 @@ export function Login() {
         </div>
 
         <p className="login-kicker">{t('appTitle')}</p>
-        <h1>{mode === 'request' ? t('requestAccessTitle') : t('siteName')}</h1>
+        <h1>{mode === 'request' ? t('requestAccessTitle') : mode === 'viewer' ? t('viewerAccessTitle') : t('siteName')}</h1>
 
         <div className="login-flow">
           {mode === 'login' && step === 'start' && (
-            <button type="button" onClick={() => setStep(username ? 'password' : 'user')} className="access-button login-step-enter">
-              <span>{t('access')}</span>
+            <button type="button" onClick={openViewerAccess} className="access-button login-step-enter">
+              <span>{t('viewCatalog')}</span>
               <i aria-hidden="true" />
             </button>
           )}
@@ -191,7 +214,14 @@ export function Login() {
           )}
 
           {mode === 'login' && (
-            <div className="login-links">
+            <div className="login-links login-entry-links">
+              <button
+                type="button"
+                className="login-link-button login-request-button login-access-button"
+                onClick={() => { setError(''); setStep(username ? 'password' : 'user'); }}
+              >
+                {t('access')}
+              </button>
               <button type="button" className="login-link-button login-request-button" onClick={openRequestAccess}>
                 {t('requestAccess')}
               </button>
@@ -302,8 +332,66 @@ export function Login() {
               </div>
             </form>
           )}
+
+          {mode === 'viewer' && (
+            <form onSubmit={submitViewerAccess} className="request-access-form viewer-access-form login-step-enter">
+              {error && <p className="form-error">{error}</p>}
+              <p className="viewer-access-hint">{t('viewerAccessHint')}</p>
+              <label className="login-field-label">
+                {t('city')} *
+                <div
+                  className={`login-select-shell custom-login-select ${cityMenuOpen ? 'is-open' : ''}`}
+                  onBlur={(event) => {
+                    const nextFocus = event.relatedTarget as Node | null;
+                    if (!nextFocus || !event.currentTarget.contains(nextFocus)) setCityMenuOpen(false);
+                  }}
+                >
+                  <button type="button" className="login-select-trigger" onClick={() => setCityMenuOpen((open) => !open)} aria-expanded={cityMenuOpen}>
+                    <span className="login-select-value">
+                      <span className="login-select-icon" aria-hidden="true"><Building2 size={15} /></span>
+                      <span>{viewerCity || t('selectCity')}</span>
+                    </span>
+                    <ChevronDown size={16} className="login-select-caret" />
+                  </button>
+                  {cityMenuOpen && (
+                    <div className="login-select-menu">
+                      {cities.map((city) => (
+                        <button
+                          type="button"
+                          key={city}
+                          className={`login-select-option ${viewerCity === city ? 'is-selected' : ''}`}
+                          aria-pressed={viewerCity === city}
+                          onClick={() => { setViewerCity(city); setCityMenuOpen(false); setError(''); }}
+                        >
+                          <span className="login-select-dot" aria-hidden="true" />
+                          <span>{city}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </label>
+              <button type="submit" className="access-button" disabled={loading}>
+                {loading ? <span className="mini-spinner" /> : <span>{t('enterAsViewer')}</span>}
+              </button>
+              <div className="login-links">
+                <button type="button" className="login-link-button" onClick={backToLogin}>{t('backToLogin')}</button>
+              </div>
+            </form>
+          )}
         </div>
       </section>
+      {loading && mode === 'viewer' && (
+        <div className="catalog-loading-overlay" role="dialog" aria-modal="true" aria-label={t('loadingCatalog')}>
+          <div className="catalog-loading-card">
+            <span className="spinner" />
+            <div>
+              <strong>{t('loadingCatalog')}</strong>
+              <small>{t('loadingCityProducts')}</small>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

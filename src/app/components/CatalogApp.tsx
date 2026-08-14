@@ -37,9 +37,10 @@ import { CatalogIcon } from '../icons';
 import { contentLanguageFor, defaultCurrencyByLanguage, languageByCurrency, localizedCategoryTitle, localizedProductDescription, localizedProductName, localizedProductPrice, normalizedPrices } from '../localization';
 import { knownMansionCoordinatesForProduct, knownMansionStorageForProduct, localizedMansionNameFromNumber, mansionNumberForProduct, normalizeMansionDescriptionCoordinates } from '../mansionData';
 import { isVideoMedia, mediaThumbUrl } from '../media';
-import { hasAnyProductPermission, hasProductPermission, PRODUCT_PERMISSIONS } from '../permissions';
+import { canManageAccessRequests, hasAnyProductPermission, hasProductPermission, PRODUCT_PERMISSIONS } from '../permissions';
 import type { Category, CategoryPayload, City, CityPayload, CurrencyCode, DescriptionTemplate, DraftImageInput, Product, ProductPayload, ProductPermission } from '../types';
 import { BackupDialog } from './BackupDialog';
+import { AccessRequestsPage } from './AccessRequestsModal';
 import { CategoryForm } from './CategoryForm';
 import { CityForm } from './CityForm';
 import { CitySelect } from './CitySelect';
@@ -440,6 +441,8 @@ export function CatalogApp() {
     deleteDescriptionTemplate,
   } = useCatalog();
   const owner = user?.role === 'OWNER';
+  const viewer = Boolean(user?.id.startsWith('viewer:'));
+  const canReviewAccessRequests = canManageAccessRequests(user);
   const productPermissions = Object.fromEntries(
     PRODUCT_PERMISSIONS.map((permission) => [permission, hasProductPermission(user, permission)]),
   ) as Record<ProductPermission, boolean>;
@@ -476,6 +479,7 @@ export function CatalogApp() {
   const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>();
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [usersOpen, setUsersOpen] = useState(false);
+  const [requestsOpen, setRequestsOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
   const [descriptionTemplatesOpen, setDescriptionTemplatesOpen] = useState(false);
   const [busyMessage, setBusyMessage] = useState('');
@@ -1909,7 +1913,7 @@ export function CatalogApp() {
                     if (node) categoryRefs.current.set(category.id, node);
                     else categoryRefs.current.delete(category.id);
                   }}
-                  className={`shop-accordion${isActive && !backupOpen && !descriptionTemplatesOpen && !usersOpen ? ' active' : ''}`}
+                  className={`shop-accordion${isActive && !backupOpen && !descriptionTemplatesOpen && !usersOpen && !requestsOpen ? ' active' : ''}`}
                 >
                   <button
                     type="button"
@@ -1919,6 +1923,7 @@ export function CatalogApp() {
                       setBackupOpen(false);
                       setDescriptionTemplatesOpen(false);
                       setUsersOpen(false);
+                      setRequestsOpen(false);
                       setMenuOpen(false);
                     }}
                   >
@@ -1968,9 +1973,12 @@ export function CatalogApp() {
           </nav>
 
           <div className="shop-sidebar-foot">
+            {!owner && canReviewAccessRequests && (
+              <button type="button" className={`shop-menu-item users-button${requestsOpen ? ' active' : ''}`} onClick={() => { setRequestsOpen(true); setUsersOpen(false); setDescriptionTemplatesOpen(false); setBackupOpen(false); setMenuOpen(false); }}><Users size={17} /> <span className="users-label-gradient">{t('users')}</span></button>
+            )}
             {owner && (
               <div className="shop-owner-actions">
-                <button type="button" className={`shop-menu-item users-button${usersOpen ? ' active' : ''}`} onClick={() => { setUsersOpen(true); setDescriptionTemplatesOpen(false); setBackupOpen(false); setMenuOpen(false); }}><Users size={17} /> <span className="users-label-gradient">{t('users')}</span></button>
+                <button type="button" className={`shop-menu-item users-button${usersOpen ? ' active' : ''}`} onClick={() => { setUsersOpen(true); setRequestsOpen(false); setDescriptionTemplatesOpen(false); setBackupOpen(false); setMenuOpen(false); }}><Users size={17} /> <span className="users-label-gradient">{t('users')}</span></button>
                 <button type="button" className="shop-menu-item" onClick={() => setCityModalOpen(true)}><Plus size={17} /> {t('addCity')}</button>
                 <button type="button" className="shop-menu-item" onClick={() => { setDefaultCityId(activeCityId || undefined); setCategoryModal('new'); }}><Plus size={17} /> {t('category')}</button>
                 <button
@@ -1979,6 +1987,7 @@ export function CatalogApp() {
                   onClick={() => {
                     setDescriptionTemplatesOpen(true);
                     setUsersOpen(false);
+                    setRequestsOpen(false);
                     setBackupOpen(false);
                     setMenuOpen(false);
                   }}
@@ -1992,6 +2001,7 @@ export function CatalogApp() {
                     setBackupOpen(true);
                     setDescriptionTemplatesOpen(false);
                     setUsersOpen(false);
+                    setRequestsOpen(false);
                     setMenuOpen(false);
                   }}
                 >
@@ -2000,11 +2010,11 @@ export function CatalogApp() {
               </div>
 
             )}
-            <div className="shop-user">
+            <div className={`shop-user${viewer ? ' viewer-user' : ''}`}>
               <div><UserIcon size={19} /></div>
               <div>
-                <p>{user?.name}</p>
-                <small>{owner ? t('owner') : t('commercial')}</small>
+                <p>{viewer ? visibleCities[0]?.name || '' : user?.name}</p>
+                <small>{owner ? t('owner') : viewer ? t('viewer') : t('commercial')}</small>
               </div>
               <button type="button" className="logout" onClick={() => void logout()} title={t('logout')} aria-label={t('logout')}><LogOut size={16} /></button>
             </div>
@@ -2023,7 +2033,9 @@ export function CatalogApp() {
           </div>
 
 
-          {usersOpen ? (
+          {requestsOpen ? (
+            <AccessRequestsPage cities={catalog.cities} onClose={() => setRequestsOpen(false)} />
+          ) : usersOpen ? (
             <UserManagement cities={catalog.cities} onClose={() => setUsersOpen(false)} />
           ) : descriptionTemplatesOpen ? (
             <DescriptionTemplatesPage
@@ -2035,7 +2047,7 @@ export function CatalogApp() {
           ) : backupOpen ? (
             <BackupDialog token={token} />
           ) : loading ? (
-            <div className="center-message large"><span className="spinner" /> {t('loadingCatalog')}</div>
+            <div className="catalog-loading-space" aria-hidden="true" />
           ) : !activeCategory ? (
             <section className="empty-state">
               <Boxes size={46} />
@@ -2392,6 +2404,18 @@ export function CatalogApp() {
       )}
 
       {toast && <Toast toast={toast} onDismiss={() => setToast(null)} />}
+
+      {loading && (
+        <div className="catalog-loading-overlay" role="dialog" aria-modal="true" aria-label={t('loadingCatalog')}>
+          <div className="catalog-loading-card">
+            <span className="spinner" />
+            <div>
+              <strong>{t('loadingCatalog')}</strong>
+              <small>{t('loadingCityProducts')}</small>
+            </div>
+          </div>
+        </div>
+      )}
 
       {busyMessage && (
         <div className="busy-overlay">

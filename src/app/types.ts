@@ -21,6 +21,9 @@ export type ProductPermission =
 
 export type UserPermissions = {
   product?: Partial<Record<ProductPermission, boolean>>;
+  accessRequests?: {
+    manageAssignedCities?: boolean;
+  };
 };
 
 export interface AuthUser {
@@ -41,6 +44,7 @@ export interface AccessRequest {
   username: string;
   cityName: string;
   requestedCityNames?: string[] | undefined;
+  approvedCityIds?: string[] | undefined;
   status: AccessRequestStatus;
   approved: boolean;
   createdAt?: string;
@@ -60,6 +64,7 @@ export interface AccessRequestPayload {
 export interface SessionData {
   token: string;
   user: AuthUser;
+  catalog?: CatalogSnapshot;
 }
 
 export interface Category {

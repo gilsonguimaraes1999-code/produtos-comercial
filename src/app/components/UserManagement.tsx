@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUpDown, Building2, Check, Clock, Pencil, Plus, Search, ShieldCheck, Trash2, UserRound, X, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Building2, Check, Clock, Eye, Pencil, Plus, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { translateAppError, useTranslation } from '../../i18n';
 import { accessRequestsApi, usersApi } from '../api';
@@ -6,6 +6,7 @@ import { useAuth } from '../auth';
 import { normalizeUserPermissions, PRODUCT_PERMISSIONS } from '../permissions';
 import type { AccessRequest, AuthUser, City, ProductPermission, UserPayload, UserRole } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
+import { AccessRequestsPage } from './AccessRequestsModal';
 import { Modal } from './Modal';
 import { RoleSelect } from './RoleSelect';
 import { UserFilterDatePicker, UserFilterSelect } from './UserFilterControls';
@@ -54,6 +55,8 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [requestBusy, setRequestBusy] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [historyDetail, setHistoryDetail] = useState<AccessRequest | null>(null);
+  const [showRequests, setShowRequests] = useState(false);
   const [query, setQuery] = useState('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [cityFilter, setCityFilter] = useState('ALL');
@@ -90,6 +93,21 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
       active = false;
     };
   }, [cities, token, t]);
+
+  useEffect(() => {
+    if (showRequests) return;
+    let active = true;
+    const refreshPendingRequests = () => {
+      accessRequestsApi.list(token).then((result) => {
+        if (active) setRequests(result.requests);
+      }).catch((err) => console.error(err));
+    };
+    const interval = window.setInterval(refreshPendingRequests, 4000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [showRequests, token]);
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -147,20 +165,6 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
     } catch (err) {
       console.error(err);
       setError(translateAppError(err, t, 'saveUserError'));
-    } finally {
-      setRequestBusy(null);
-    }
-  }
-
-  async function rejectRequest(item: AccessRequest) {
-    setRequestBusy(item.id);
-    setError('');
-    try {
-      const result = await accessRequestsApi.reject(token, item.id);
-      setRequests(result.requests);
-    } catch (err) {
-      console.error(err);
-      setError(translateAppError(err, t, 'deleteUserError'));
     } finally {
       setRequestBusy(null);
     }
@@ -237,6 +241,17 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
     return ids.map((id) => cityNameById[id]).filter(Boolean).join(', ') || 'Nenhuma cidade';
   }
 
+  function approvedCitiesForRequest(item: AccessRequest) {
+    const storedIds = item.approvedCityIds || [];
+    const matchingUser = users.find((candidate) => candidate.username.trim().toLowerCase() === item.username.trim().toLowerCase());
+    const cityIds = storedIds.length ? storedIds : matchingUser?.allowedCityIds || [];
+    return cityIds.map((id) => cityNameById[id]).filter(Boolean);
+  }
+
+  if (showRequests) {
+    return <AccessRequestsPage cities={cities} onClose={() => setShowRequests(false)} onUsersChanged={setUsers} onRequestsChanged={setRequests} />;
+  }
+
   return (
     <section className="users-layout users-page">
       <div className="template-page-head users-page-head">
@@ -258,6 +273,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
           <label><span>{t('createdTo')}</span><UserFilterDatePicker value={createdTo} onChange={setCreatedTo} min={createdFrom || undefined} ariaLabel={t('creationEndDate')} /></label>
         </div>
         <div className="users-catalog-actions owner-actions">
+          <button type="button" className={`secondary-button access-requests-button${pendingRequests.length > 0 ? ' has-pending' : ''}`} onClick={() => setShowRequests(true)}><Clock size={16} /> {t('accessRequests')} {pendingRequests.length > 0 && <span className="button-count">{pendingRequests.length}</span>}</button>
           <button type="button" className="secondary-button history-toggle" onClick={() => setShowHistory(true)}><Clock size={16} /> {t('accessHistory')}</button>
           <button type="button" className="secondary-button" onClick={() => { setError(''); setEditing(blankUser(allCityIds)); }}><Plus size={16} /> {t('newAccount')}</button>
           <button type="button" className="secondary-button" onClick={() => setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')}><ArrowUpDown size={16} /> {sortDirection === 'asc' ? 'A → Z' : 'Z → A'}</button>
@@ -272,33 +288,6 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
 
       {loading ? <div className="center-message"><span className="spinner" /> {t('loadingUsers')}</div> : (
         <>
-          <div className="access-requests-panel">
-            <div className="access-requests-header">
-              <div><strong>{t('accessRequests')}</strong><p>{t('accessPendingHint')}</p></div>
-            </div>
-            {pendingRequests.length ? (
-              <div className="access-requests-list">
-                {pendingRequests.map((item) => (
-                  <article key={item.id}>
-                    <span className="user-avatar"><Clock size={18} /></span>
-                    <div><strong>{item.name}</strong><small>@{item.username}</small><small><b>{t('requestedCities')}:</b> {(item.requestedCityNames?.length ? item.requestedCityNames : [item.cityName]).filter(Boolean).join(', ')}</small></div>
-                    <div className="city-permission-picker compact" aria-label={t('requestedCitiesBy', { name: item.name })}>
-                      {cities.map((city) => {
-                        const checked = (requestCitySelections[item.id] || []).includes(city.id);
-                        return <label key={city.id} className={checked ? 'is-checked' : ''}><input type="checkbox" checked={checked} onChange={() => setRequestCitySelections((current) => ({ ...current, [item.id]: toggleCity(current[item.id] || [], city.id) }))} /><span className="remember-dot" aria-hidden="true" /><span>{city.name}</span></label>;
-                      })}
-                    </div>
-                    <span className={`status-dot request-${item.status.toLowerCase()}`}>{requestStatusLabel(item.status)}</span>
-                    <div className="row-actions">
-                      <button type="button" disabled={requestBusy === item.id} onClick={() => approveRequest(item)} aria-label={t('approveAccess')} title={t('approveAccess')}><Check size={16} /></button>
-                      <button type="button" disabled={requestBusy === item.id} onClick={() => rejectRequest(item)} aria-label={t('rejectAccess')} title={t('rejectAccess')}><XCircle size={16} /></button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : <p className="muted-small">{t('noPendingAccessRequests')}</p>}
-          </div>
-
           <div className="users-list">
             {visibleUsers.map((item) => (
               <article key={item.id}>
@@ -338,6 +327,24 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
                 return <label key={city.id} className={checked ? 'is-checked' : ''}><input type="checkbox" checked={checked} disabled={editing.role === 'OWNER'} onChange={() => setEditing({ ...editing, allowedCityIds: toggleCity(editing.allowedCityIds, city.id) })} /><span className="remember-dot" aria-hidden="true" /><span>{city.name}</span></label>;
               })}
             </div>
+          </div>
+          <div className="permission-editor">
+            <strong>{t('accessRequestPermission')}</strong>
+            <p>{t('accessRequestPermissionHint')}</p>
+            <label className={`remember-row account-active-row permission-toggle${editing.role === 'OWNER' || editing.permissions?.accessRequests?.manageAssignedCities ? ' is-checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={editing.role === 'OWNER' || editing.permissions?.accessRequests?.manageAssignedCities === true}
+                disabled={editing.role === 'OWNER'}
+                onChange={(event) => {
+                  const next = normalizeUserPermissions(editing.permissions);
+                  next.accessRequests = { manageAssignedCities: event.target.checked };
+                  setEditing({ ...editing, permissions: next });
+                }}
+              />
+              <span className="remember-dot" aria-hidden="true" />
+              <span>{t('manageAssignedCityRequests')}</span>
+            </label>
           </div>
           <div className="permission-editor">
             <strong>{t('productPermissions')}</strong>
@@ -396,6 +403,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
                     </div>
                     <span className={`status-dot request-${item.status.toLowerCase()}`}>{requestStatusLabel(item.status)}</span>
                     <div className="row-actions">
+                      <button type="button" onClick={() => setHistoryDetail(item)} aria-label={t('viewAccessDetails')} title={t('viewAccessDetails')}><Eye size={16} /></button>
                       {item.status === 'REPROVADO' && (
                         <button type="button" disabled={requestBusy === item.id} onClick={() => approveRequest(item)} aria-label={t('approveAccess')} title={t('approveAccess')}><Check size={16} /></button>
                       )}
@@ -404,6 +412,27 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
                 ))}
               </div>
             ) : <p className="muted-small history-modal-empty">{t('noAccessHistory')}</p>}
+          </div>
+        </div>
+      )}
+
+      {historyDetail && (
+        <div className="history-detail-overlay" role="dialog" aria-modal="true" aria-label={t('accessDetails')} onMouseDown={(event) => { if (event.target === event.currentTarget) setHistoryDetail(null); }}>
+          <div className="history-detail-card">
+            <div className="history-modal-header">
+              <div><span>{t('configuration')}</span><strong>{t('accessDetails')}</strong><p>{historyDetail.name}</p></div>
+              <button type="button" className="icon-button" onClick={() => setHistoryDetail(null)} aria-label={t('close')} title={t('close')}><X size={20} /></button>
+            </div>
+            <div className="history-detail-grid">
+              <div><small>{t('name')}</small><strong>{historyDetail.name}</strong></div>
+              <div><small>{t('username')}</small><strong>@{historyDetail.username}</strong></div>
+              <div><small>{t('status')}</small><span className={`status-dot request-${historyDetail.status.toLowerCase()}`}>{requestStatusLabel(historyDetail.status)}</span></div>
+              <div><small>{t('requestedCities')}</small><strong>{(historyDetail.requestedCityNames?.length ? historyDetail.requestedCityNames : [historyDetail.cityName]).filter(Boolean).join(', ') || t('noDateRegistered')}</strong></div>
+              <div className="history-detail-wide"><small>{t('approvedCities')}</small><div className="history-city-tags">{approvedCitiesForRequest(historyDetail).length ? approvedCitiesForRequest(historyDetail).map((city) => <span key={city}>{city}</span>) : <strong>{t('noApprovedCitiesRegistered')}</strong>}</div></div>
+              <div><small>{t('requestedAt')}</small><strong>{historyDetail.createdAt || t('noDateRegistered')}</strong></div>
+              <div><small>{t('reviewedAt')}</small><strong>{historyDetail.reviewedAt || historyDetail.updatedAt || t('noDateRegistered')}</strong></div>
+              <div className="history-detail-wide"><small>{t('reviewedBy')}</small><strong>{historyDetail.reviewedBy || t('noDateRegistered')}</strong></div>
+            </div>
           </div>
         </div>
       )}

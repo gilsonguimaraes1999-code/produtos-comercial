@@ -3,7 +3,7 @@ import { ApiError, catalogApi } from './api';
 import { useAuth } from './auth';
 import { useTranslation } from '../i18n';
 import { uploadImageToImgbb } from './imgbb';
-import { preloadCatalogCovers, scheduleCatalogImagePreload } from './imagePreload';
+import { scheduleCatalogImagePreload } from './imagePreload';
 import { completeMansionPayloadForSave } from './mansionData';
 import type { CatalogSnapshot, CategoryPayload, City, CityPayload, CloneCategoryPayload, CloneProductPayload, ContentLanguage, CurrencyCode, DescriptionTemplatePayload, DraftImageInput, ProductPayload } from './types';
 
@@ -32,6 +32,32 @@ interface CatalogContextValue {
 
 const emptyCatalog: CatalogSnapshot = { revision: 0, cities: [], categories: [], products: [], descriptionTemplates: [] };
 const CatalogContext = createContext<CatalogContextValue | null>(null);
+const CATALOG_CACHE_PREFIX = 'sg_catalog_cache_v3';
+
+function catalogCacheKey(userId: string, language: string) {
+  return `${CATALOG_CACHE_PREFIX}:${userId}:${language}`;
+}
+
+function readCatalogCache(userId: string, language: string): CatalogSnapshot | null {
+  if (typeof window === 'undefined' || !userId) return null;
+  try {
+    const raw = window.localStorage.getItem(catalogCacheKey(userId, language));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { catalog?: CatalogSnapshot };
+    return parsed.catalog && Array.isArray(parsed.catalog.products) ? parsed.catalog : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCatalogCache(userId: string, language: string, catalog: CatalogSnapshot) {
+  if (typeof window === 'undefined' || !userId) return;
+  try {
+    window.localStorage.setItem(catalogCacheKey(userId, language), JSON.stringify({ savedAt: Date.now(), catalog }));
+  } catch {
+    // O catálogo ao vivo continua funcionando mesmo se o navegador estiver sem espaço local.
+  }
+}
 
 function normalizeCatalogSnapshot(snapshot: CatalogSnapshot): CatalogSnapshot {
   const fallbackCity: City = {
@@ -90,10 +116,12 @@ function normalizeProductPayloadForSave(product: ProductPayload): ProductPayload
 }
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  const { token } = useAuth();
+  const { token, user, bootstrapCatalog } = useAuth();
   const { language } = useTranslation();
-  const [catalog, setCatalog] = useState<CatalogSnapshot>(emptyCatalog);
-  const [loading, setLoading] = useState(true);
+  const bootstrapRef = useRef<CatalogSnapshot | null>(bootstrapCatalog);
+  const initialCache = bootstrapRef.current || readCatalogCache(user?.id || '', language);
+  const [catalog, setCatalog] = useState<CatalogSnapshot>(initialCache || emptyCatalog);
+  const [loading, setLoading] = useState(!initialCache);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -112,8 +140,9 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     setLastSyncAt(Date.now());
     setError('');
     scheduleCatalogImagePreload(normalized);
+    writeCatalogCache(user?.id || '', languageRef.current, normalized);
     if (broadcast) broadcastRef.current?.postMessage({ type: 'catalog-revision', revision: next.revision });
-  }, []);
+  }, [user?.id]);
 
   const inFlightRef = useRef(false);
 
@@ -126,7 +155,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       const languageChanged = languageRef.current !== language;
       const result = await catalogApi.sync(token, force || languageChanged ? -1 : catalogRef.current.revision, language);
       if (result.changed && result.catalog) {
-        if (catalogRef.current.revision === 0) await preloadCatalogCovers(result.catalog);
         applyCatalog(result.catalog, false);
       } else setLastSyncAt(Date.now());
       languageRef.current = language;
@@ -142,6 +170,17 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) return;
+    languageRef.current = language;
+    const cached = bootstrapRef.current || readCatalogCache(user?.id || '', language);
+    if (cached) {
+      applyCatalog(cached, false);
+      bootstrapRef.current = null;
+      setLoading(false);
+    } else {
+      setCatalog(emptyCatalog);
+      catalogRef.current = emptyCatalog;
+      setLoading(true);
+    }
     if (typeof BroadcastChannel !== 'undefined') {
       broadcastRef.current = new BroadcastChannel('sg-showcase-live');
       broadcastRef.current.onmessage = (event) => {
@@ -151,23 +190,27 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    void refresh(true);
+    void refresh(!cached);
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
-    }, 4000);
+    }, 2500);
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') void refresh();
     };
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onVisibility);
+    window.addEventListener('online', onVisibility);
 
     return () => {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onVisibility);
+      window.removeEventListener('online', onVisibility);
       broadcastRef.current?.close();
       broadcastRef.current = null;
     };
-  }, [language, refresh, token]);
+  }, [applyCatalog, language, refresh, token, user?.id]);
 
   const value = useMemo<CatalogContextValue>(() => ({
     catalog,

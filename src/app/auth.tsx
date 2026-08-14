@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { authApi, isTransientApiError } from './api';
-import type { AuthUser, SessionData } from './types';
+import type { AuthUser, CatalogSnapshot, SessionData } from './types';
 
 const SESSION_KEY = 'sg_showcase_session';
 
@@ -8,7 +8,9 @@ interface AuthContextValue {
   user: AuthUser | null;
   token: string;
   loading: boolean;
+  bootstrapCatalog: CatalogSnapshot | null;
   login: (username: string, password: string) => Promise<void>;
+  loginAsViewer: (cityName: string) => Promise<void>;
   logout: () => Promise<void>;
   replaceUser: (user: AuthUser) => void;
 }
@@ -65,10 +67,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     token: session?.token ?? '',
     loading,
+    bootstrapCatalog: session?.catalog ?? null,
     async login(username, password) {
       const next = await authApi.login(username.trim(), password);
       setSession(next);
       localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+    },
+    async loginAsViewer(cityName) {
+      const next = await authApi.viewerLogin(cityName.trim());
+      setSession(next);
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ token: next.token, user: next.user }));
     },
     async logout() {
       const token = session?.token;
