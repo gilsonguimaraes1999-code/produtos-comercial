@@ -513,7 +513,7 @@ export function ProductForm({ product, cities, categories, descriptionTemplates 
         descriptionHtml: payloadDescriptionHtml,
         ...(payloadDescriptionTranslations ? { descriptionTranslations: payloadDescriptionTranslations } : {}),
         sourceLanguage: payloadSourceLanguage,
-        autoTranslate: canEditName,
+        autoTranslate: !product && canEditName,
         autoTranslateDescription: canEditDescription,
         syncNameAcrossLanguages: false,
         prices: payloadPrices,
