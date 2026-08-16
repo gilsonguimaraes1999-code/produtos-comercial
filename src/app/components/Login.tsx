@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, Building2, ChevronDown, ChevronLeft, Lock, User } from 'lucide-react';
 import { useAuth } from '../auth';
 import { accessRequestsApi } from '../api';
@@ -32,6 +32,8 @@ export function Login() {
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [requestForm, setRequestForm] = useState(blankAccessRequest);
   const [viewerCity, setViewerCity] = useState('');
+  const [loadingCities, setLoadingCities] = useState(false);
+  const citiesRequestRef = useRef<Promise<string[]> | null>(null);
 
   useEffect(() => {
     try {
@@ -43,16 +45,24 @@ export function Login() {
     }
   }, []);
 
-  useEffect(() => {
-    if (mode === 'login' || cities.length) return;
+  function loadCities() {
+    if (!citiesRequestRef.current) {
+      citiesRequestRef.current = accessRequestsApi.cities()
+        .then((result) => {
+          setCities(result.cities);
+          return result.cities;
+        })
+        .catch((err) => {
+          citiesRequestRef.current = null;
+          throw err;
+        });
+    }
+    return citiesRequestRef.current;
+  }
 
-    accessRequestsApi.cities()
-      .then((result) => setCities(result.cities))
-      .catch((err) => {
-        console.error(err);
-        setError(translateAppError(err, t, 'requestFailed'));
-      });
-  }, [cities.length, mode, t]);
+  useEffect(() => {
+    void loadCities().catch((err) => console.error(err));
+  }, []);
 
   function submitUsername(event: FormEvent) {
     event.preventDefault();
@@ -80,18 +90,31 @@ export function Login() {
     }
   }
 
-  function openRequestAccess() {
-    setMode('request');
+  async function prepareCityMode(nextMode: 'request' | 'viewer') {
+    setLoadingCities(true);
     setCityMenuOpen(false);
     setError('');
     setSuccess('');
+    try {
+      const loadedCities = await loadCities();
+      if (!loadedCities.length) throw new Error(t('noCitiesAvailable'));
+      setMode(nextMode);
+    } catch (err) {
+      console.error(err);
+      setMode('login');
+      setStep('start');
+      setError(translateAppError(err, t, 'requestFailed'));
+    } finally {
+      setLoadingCities(false);
+    }
+  }
+
+  function openRequestAccess() {
+    void prepareCityMode('request');
   }
 
   function openViewerAccess() {
-    setMode('viewer');
-    setCityMenuOpen(false);
-    setError('');
-    setSuccess('');
+    void prepareCityMode('viewer');
   }
 
   function backToLogin() {
@@ -175,6 +198,7 @@ export function Login() {
         <h1>{mode === 'request' ? t('requestAccessTitle') : mode === 'viewer' ? t('viewerAccessTitle') : t('siteName')}</h1>
 
         <div className="login-flow">
+          {mode === 'login' && step === 'start' && error && <p className="form-error login-start-error">{error}</p>}
           {mode === 'login' && step === 'start' && (
             <button type="button" onClick={openViewerAccess} className="access-button login-step-enter">
               <span>{t('viewCatalog')}</span>
@@ -399,6 +423,17 @@ export function Login() {
           )}
         </div>
       </section>
+      {loadingCities && (
+        <div className="catalog-loading-overlay" role="dialog" aria-modal="true" aria-label={t('loadingCities')}>
+          <div className="catalog-loading-card">
+            <span className="spinner" />
+            <div>
+              <strong>{t('loadingCities')}</strong>
+              <small>{t('loadingCreatedCities')}</small>
+            </div>
+          </div>
+        </div>
+      )}
       {loading && mode === 'viewer' && (
         <div className="catalog-loading-overlay" role="dialog" aria-modal="true" aria-label={t('loadingCatalog')}>
           <div className="catalog-loading-card">
