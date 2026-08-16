@@ -2972,14 +2972,16 @@ function saveProduct_(token, input) {
       current.updatedAt = now;
       current.updatedBy = user.id;
 
-      var editedProductTranslations = completeCatalogTextTranslations_(
-        normalized.name,
-        normalized.sourceLanguage
-      );
-      current.name = editedProductTranslations.pt;
-      current.nameBR = editedProductTranslations.pt;
-      current.nameEN = editedProductTranslations.en;
-      current.nameES = editedProductTranslations.es;
+      // Translation is only automatic when a product is first created. On an
+      // existing product, changing one language must preserve the other two.
+      if (normalized.sourceLanguage === 'en') {
+        current.nameEN = normalized.name;
+      } else if (normalized.sourceLanguage === 'es') {
+        current.nameES = normalized.name;
+      } else {
+        current.name = normalized.name;
+        current.nameBR = normalized.name;
+      }
 
       current.amountBRL = prices.amountBRL;
       current.amountUSD = prices.amountUSD;
