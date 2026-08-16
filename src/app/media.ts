@@ -41,14 +41,14 @@ export function previewFrameUrl(media: Pick<ProductImage | DraftImageInput, 'url
 
 export function mediaThumbUrl(media: Pick<ProductImage | DraftImageInput, 'url' | 'thumbnailUrl' | 'mediaType'>) {
   if (!isVideoMedia(media)) return displayMediaUrl(media.url || '');
-  if (media.thumbnailUrl) return media.thumbnailUrl;
+  if (media.thumbnailUrl) return publicDriveImageUrl(media.thumbnailUrl);
 
   const url = parsedUrl(media.url);
   const youtubeId = url ? youtubeIdFromUrl(url) : '';
   if (youtubeId) return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 
   const driveId = url ? driveIdFromUrl(url) : '';
-  if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w480`;
+  if (driveId) return publicDriveImageUrl(media.url || '');
 
   return '';
 }
@@ -56,7 +56,7 @@ export function mediaThumbUrl(media: Pick<ProductImage | DraftImageInput, 'url' 
 export function displayMediaUrl(rawUrl: string) {
   if (!rawUrl || rawUrl === '/mansion-placeholder.png') return MANSION_PLACEHOLDER_URL;
   if (rawUrl === MANSION_PLACEHOLDER_URL) return rawUrl;
-  if (!/^data:image\/svg\+xml/i.test(rawUrl)) return rawUrl;
+  if (!/^data:image\/svg\+xml/i.test(rawUrl)) return publicDriveImageUrl(rawUrl);
 
   const marker = 'IMAGEM EM BREVE';
   const mansionMarker = 'MANSION_PLACEHOLDER';
@@ -90,12 +90,26 @@ function youtubeIdFromUrl(url: URL) {
 
 function driveIdFromUrl(url: URL) {
   const host = url.hostname.replace(/^www\./, '').toLowerCase();
+  if (host === 'lh3.googleusercontent.com') {
+    return url.pathname.match(/^\/d\/([^/=]+)/i)?.[1] || '';
+  }
   if (!host.endsWith('drive.google.com')) return '';
 
   const fileMatch = url.pathname.match(/\/file\/d\/([^/]+)/i);
   if (fileMatch?.[1]) return fileMatch[1];
 
   return url.searchParams.get('id') || '';
+}
+
+function publicDriveImageUrl(rawUrl: string, size = 480) {
+  const url = parsedUrl(rawUrl);
+  const driveId = url ? driveIdFromUrl(url) : '';
+  if (!driveId) return rawUrl;
+
+  // The Drive thumbnail endpoint attempts to use third-party storage, which
+  // Edge Tracking Prevention blocks once per image. Google's public image CDN
+  // serves the shared asset without that storage dependency.
+  return `https://lh3.googleusercontent.com/d/${encodeURIComponent(driveId)}=w${size}`;
 }
 
 export function normalizeMediaLink(rawUrl: string): DraftImageInput | null {
@@ -125,7 +139,7 @@ export function normalizeMediaLink(rawUrl: string): DraftImageInput | null {
       url: `https://drive.google.com/file/d/${driveId}/preview`,
       mediaType: 'video',
       videoProvider: 'drive',
-      thumbnailUrl: `https://drive.google.com/thumbnail?id=${driveId}&sz=w480`,
+      thumbnailUrl: publicDriveImageUrl(parsed.href),
       name: 'video-drive',
     };
   }
