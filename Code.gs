@@ -166,6 +166,7 @@ var PRODUCT_PERMISSIONS = [
   'markProductSold',
   'viewSoldDiscordId',
   'cloneProduct',
+  'cloneCategory',
   'deleteProduct',
   'moveProduct'
 ];
@@ -3222,7 +3223,7 @@ function cloneProduct_(token, productId, targetCategoryId) {
 }
 
 function cloneCategory_(token, categoryId, targetCityId) {
-  var user = requireOwner_(token);
+  var user = requireProductPermission_(token, 'cloneCategory');
   categoryId = String(categoryId || '').trim();
   targetCityId = String(targetCityId || '').trim();
 
@@ -3231,12 +3232,14 @@ function cloneCategory_(token, categoryId, targetCityId) {
     if (findIndexById_(cities, targetCityId) === -1) {
       throw new Error('Cidade de destino nao encontrada.');
     }
+    requireCityAccess_(user, targetCityId, cities);
 
     var categories = readTable_('Categories');
     var sourceIndex = findIndexById_(categories, categoryId);
     if (sourceIndex === -1) throw new Error('Categoria nao encontrada.');
 
     var source = categories[sourceIndex];
+    requireCityAccess_(user, source.cityId, cities);
     var now = now_();
     var newCategoryId = Utilities.getUuid();
     var sameNameInCity = categories.some(function (category) {
