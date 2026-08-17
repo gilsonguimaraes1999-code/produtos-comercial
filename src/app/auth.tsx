@@ -63,6 +63,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void revalidate();
   }, []);
 
+  useEffect(() => {
+    const token = session?.token;
+    if (!token || token.startsWith('viewer:')) return;
+
+    let active = true;
+    const refreshPermissions = async () => {
+      try {
+        const result = await authApi.validate(token);
+        if (!active) return;
+        setSession((current) => {
+          if (!current || current.token !== token) return current;
+          const next = { ...current, user: result.user };
+          localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+          return next;
+        });
+      } catch (err) {
+        if (!active || isTransientApiError(err)) return;
+        localStorage.removeItem(SESSION_KEY);
+        setSession(null);
+      }
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPermissions();
+    };
+    void refreshPermissions();
+    const interval = window.setInterval(() => void refreshPermissions(), 8000);
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [session?.token]);
+
   const value = useMemo<AuthContextValue>(() => ({
     user: session?.user ?? null,
     token: session?.token ?? '',

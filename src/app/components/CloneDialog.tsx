@@ -1,6 +1,6 @@
 import { CopyPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useTranslation } from '../../i18n';
+import { translateAppError, useTranslation } from '../../i18n';
 import { localizedCategoryTitle } from '../localization';
 import type { Category, City } from '../types';
 import { CategorySelect } from './CategorySelect';
@@ -19,14 +19,18 @@ export function CloneProductDialog({ cities, categories, sourceCategoryId, onCan
   const cityCategories = useMemo(() => categories.filter((category) => category.cityId === cityId), [categories, cityId]);
   const [categoryId, setCategoryId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const effectiveCategoryId = categoryId || cityCategories[0]?.id || '';
 
   async function confirm() {
     if (!effectiveCategoryId) return;
     setSaving(true);
+    setError('');
     try {
       await onConfirm(effectiveCategoryId);
+    } catch (err) {
+      setError(translateAppError(err, t, 'genericActionError'));
     } finally {
       setSaving(false);
     }
@@ -34,6 +38,7 @@ export function CloneProductDialog({ cities, categories, sourceCategoryId, onCan
 
   return (
     <div className="stack-form">
+      {error && <p className="form-error normal-case">{error}</p>}
       <div className="two-columns">
         <div className="field-label">{t('targetCity')}<CitySelect cities={cities} value={cityId} onChange={(value) => { setCityId(value); setCategoryId(''); }} /></div>
         <div className="field-label">{t('targetCategory')}<CategorySelect categories={cityCategories} value={effectiveCategoryId} onChange={setCategoryId} /></div>
