@@ -5071,3 +5071,37 @@ body,
   .history-detail-grid { grid-template-columns: 1fr; }
   .history-detail-grid .history-detail-wide { grid-column: auto; }
 }
+
+/* Mantem o cursor personalizado também nas áreas vazias e nos controles
+   fixados à direita do catálogo. Esta regra fica por último para impedir que
+   estilos nativos de controles ou camadas de fundo restaurem o cursor padrão. */
+html,
+body,
+#root,
+.app-shell,
+.shop-layout,
+.shop-main,
+.shop-topline,
+.site-background,
+.catalog-currency-control,
+.catalog-currency-control *,
+.floating-language-switcher,
+.floating-language-switcher * {
+  cursor: var(--sg-cursor) !important;
+}
+
+/* O seletor de idioma e o fundo decorativo vivem fora do conteúdo principal.
+   Aplica o cursor também no documento e em todas as camadas visuais, inclusive
+   pseudo-elementos fixos, sem ampliar a área interativa do seletor. */
+html,
+html *,
+html *::before,
+html *::after {
+  cursor: var(--sg-cursor) !important;
+}
+
+.floating-language-switcher {
+  width: max-content;
+  height: max-content;
+  max-width: calc(100vw - 20px);
+}

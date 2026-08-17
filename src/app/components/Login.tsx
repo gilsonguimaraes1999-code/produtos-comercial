@@ -194,7 +194,6 @@ export function Login() {
           <img src="/alpha-logo.png" alt={t('siteName')} className="login-logo" />
         </div>
 
-        <p className="login-kicker">{t('appTitle')}</p>
         <h1>{mode === 'request' ? t('requestAccessTitle') : mode === 'viewer' ? t('viewerAccessTitle') : t('siteName')}</h1>
 
         <div className="login-flow">

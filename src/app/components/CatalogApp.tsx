@@ -456,6 +456,7 @@ export function CatalogApp() {
     productPermissions.markProductSold
   );
   const canCloneProduct = productPermissions.cloneProduct === true;
+  const canCloneCategory = productPermissions.cloneCategory === true;
   const canDeleteProduct = productPermissions.deleteProduct === true;
   const canMoveProduct = productPermissions.moveProduct === true;
   const canShowProductActions = Boolean(canEditProduct || canCloneProduct || canDeleteProduct || canMoveProduct);
@@ -1890,7 +1891,6 @@ export function CatalogApp() {
             <img src="/alpha-logo.png" alt={t('siteName')} />
             <div>
               <h2>{t('siteName')}</h2>
-              <p>{t('appTitle')}</p>
             </div>
           </div>
 
@@ -2119,11 +2119,11 @@ export function CatalogApp() {
               </div>
 
 
-              {(owner || canCreateProduct) && (
+              {(owner || canCreateProduct || canCloneCategory) && (
                 <div className="owner-actions" style={{ justifyContent: 'flex-start', margin: '18px 0 24px' }}>
                   {canCreateProduct && <button type="button" className="secondary-button" onClick={() => { setDefaultCategoryId(activeCategory.id); setProductModal('new'); }}><Plus size={16} /> {t('product')}</button>}
                   {owner && <button type="button" className="secondary-button" onClick={() => setCategoryModal(activeCategory)}><Pencil size={16} /> {t('editCategory')}</button>}
-                  {owner && <button type="button" className="secondary-button" onClick={() => setCloneCategoryModal(activeCategory)}><CopyPlus size={16} /> {t('cloneCategory')}</button>}
+                  {canCloneCategory && <button type="button" className="secondary-button" onClick={() => setCloneCategoryModal(activeCategory)}><CopyPlus size={16} /> {t('cloneCategory')}</button>}
                   {owner && (
                     <button
                       type="button"

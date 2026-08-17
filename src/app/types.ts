@@ -16,6 +16,7 @@ export type ProductPermission =
   | 'markProductSold'
   | 'viewSoldDiscordId'
   | 'cloneProduct'
+  | 'cloneCategory'
   | 'deleteProduct'
   | 'moveProduct';
 

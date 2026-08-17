@@ -10,6 +10,7 @@ export const PRODUCT_PERMISSIONS: ProductPermission[] = [
   'markProductSold',
   'viewSoldDiscordId',
   'cloneProduct',
+  'cloneCategory',
   'deleteProduct',
   'moveProduct',
 ];

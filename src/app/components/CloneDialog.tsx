@@ -60,12 +60,16 @@ export function CloneCategoryDialog({ cities, onCancel, onConfirm }: {
   const { t } = useTranslation();
   const [cityId, setCityId] = useState(cities[0]?.id || '');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   async function confirm() {
     if (!cityId) return;
     setSaving(true);
+    setError('');
     try {
       await onConfirm(cityId);
+    } catch (err) {
+      setError(translateAppError(err, t, 'genericActionError'));
     } finally {
       setSaving(false);
     }
@@ -73,6 +77,7 @@ export function CloneCategoryDialog({ cities, onCancel, onConfirm }: {
 
   return (
     <div className="stack-form">
+      {error && <p className="form-error normal-case">{error}</p>}
       <div className="field-label">{t('targetCity')}<CitySelect cities={cities} value={cityId} onChange={setCityId} /></div>
       <p className="helper-text"><CopyPlus size={14} /> {t('cloneCategoryHint')}</p>
       <div className="form-actions">

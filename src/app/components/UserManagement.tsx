@@ -39,6 +39,7 @@ const productPermissionLabels: Record<ProductPermission, string> = {
   markProductSold: 'Marcar como vendido',
   viewSoldDiscordId: 'Ver Discord ID do dono',
   cloneProduct: 'Clonar produto',
+  cloneCategory: 'Clonar categoria',
   deleteProduct: 'Excluir produto',
   moveProduct: 'Mover produto',
 };
@@ -366,7 +367,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
                       }}
                     />
                     <span className="remember-dot" aria-hidden="true" />
-                    <span>{productPermissionLabels[permission]}</span>
+                    <span>{permission === 'cloneProduct' ? t('cloneProduct') : permission === 'cloneCategory' ? t('cloneCategory') : productPermissionLabels[permission]}</span>
                   </label>
                 );
               })}
