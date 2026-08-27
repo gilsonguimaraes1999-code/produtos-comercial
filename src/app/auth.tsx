@@ -1,0 +1,142 @@
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
+import { getAuthRepository } from './supabase/authRepository';
+import { getCatalogRepository } from './supabase/catalogRepository';
+import { fetchCatalogSnapshot } from './supabase/catalogSnapshot';
+import type { AuthUser, CatalogSnapshot, SessionData } from './types';
+
+const SESSION_KEY = 'sg_showcase_session';
+
+interface AuthContextValue {
+  user: AuthUser | null;
+  token: string;
+  loading: boolean;
+  bootstrapCatalog: CatalogSnapshot | null;
+  activationEnabled: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  activateAccount: (input: { username: string; code: string; password: string }) => Promise<void>;
+  loginAsViewer: (cityName: string) => Promise<void>;
+  logout: () => Promise<void>;
+  replaceUser: (user: AuthUser) => void;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function readViewerSession(): SessionData | null {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') as SessionData | null;
+  } catch {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<SessionData | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const saved = readViewerSession();
+
+    if (saved?.token.startsWith('viewer:')) {
+      setSession(saved);
+      setLoading(false);
+      return;
+    }
+
+    localStorage.removeItem(SESSION_KEY);
+    const repository = getAuthRepository();
+    const client = getSupabaseBrowserClient();
+    let active = true;
+
+    void repository.getCurrentSessionData()
+      .then((next) => {
+        if (active) setSession(next);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    const { data: authListener } = client.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        return;
+      }
+      if (event !== 'SIGNED_IN' && event !== 'TOKEN_REFRESHED' && event !== 'USER_UPDATED') return;
+
+      window.setTimeout(() => {
+        void repository.getCurrentSessionData().then((next) => {
+          if (active) setSession(next);
+        });
+      }, 0);
+    });
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const value = useMemo<AuthContextValue>(() => ({
+    user: session?.user ?? null,
+    token: session?.token ?? '',
+    loading,
+    bootstrapCatalog: session?.catalog ?? null,
+    activationEnabled: true,
+    async login(username, password) {
+      const next = await getAuthRepository().login(username, password);
+      setSession(next);
+    },
+    async activateAccount(input) {
+      await getAuthRepository().activate(input);
+    },
+    async loginAsViewer(cityName) {
+      const cityResult = await getSupabaseBrowserClient().from('cities').select('id, name').eq('name', cityName.trim()).single();
+      if (cityResult.error || !cityResult.data) throw new Error('INVALID_ACCESS_CITY');
+      const catalog = await fetchCatalogSnapshot(getCatalogRepository(), 'pt');
+      const cityId = cityResult.data.id;
+      const visibleCategoryIds = new Set(catalog.categories.filter((item) => item.cityId === cityId).map((item) => item.id));
+      const visibleCatalog = {
+        ...catalog,
+        cities: catalog.cities.filter((item) => item.id === cityId),
+        categories: catalog.categories.filter((item) => item.cityId === cityId),
+        products: catalog.products.filter((item) => visibleCategoryIds.has(item.categoryId)),
+        descriptionTemplates: (catalog.descriptionTemplates || []).filter((item) => visibleCategoryIds.has(item.categoryId)),
+      };
+      const next: SessionData = {
+        token: `viewer:${cityId}`,
+        user: { id: `viewer:${cityId}`, name: cityResult.data.name, username: 'viewer', role: 'COMERCIAL', status: 'Ativo', allowedCityIds: [cityId], permissions: { product: {} } },
+        catalog: visibleCatalog,
+      };
+      setSession(next);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+    },
+    async logout() {
+      const token = session?.token;
+      setSession(null);
+      localStorage.removeItem(SESSION_KEY);
+      if (!token) return;
+
+      try {
+        if (!token.startsWith('viewer:')) await getAuthRepository().logout();
+      } catch {
+        // A sessão local já foi encerrada.
+      }
+    },
+    replaceUser(user) {
+      if (!session) return;
+      const next = { ...session, user };
+      setSession(next);
+      if (session.token.startsWith('viewer:')) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      }
+    },
+  }), [loading, session]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth deve ser usado dentro de AuthProvider.');
+  return context;
+}
