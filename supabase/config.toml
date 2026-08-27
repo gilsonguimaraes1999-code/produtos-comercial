@@ -1,0 +1,16 @@
+project_id = "kfhuzqohwtvcmybguvrs"
+
+[api]
+enabled = true
+
+[db]
+major_version = 17
+
+[studio]
+enabled = true
+
+[functions.activate-user]
+verify_jwt = false
+
+[functions.request-access]
+verify_jwt = false

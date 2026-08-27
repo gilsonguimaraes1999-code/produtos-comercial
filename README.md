@@ -1,95 +1,73 @@
 # Comercial Produtos
 
-Catálogo interno em React + TanStack Start, conectado ao Google Apps Script e preparado para publicação no Vercel.
+Catálogo React + TanStack Start com Supabase como backend oficial.
 
-## Novidades desta versão
+## Arquitetura
 
-- Valores independentes em **Real, Dólar, Libra e Euro** no mesmo produto.
-- Botão **Adicionar valor em outra moeda** na criação e edição de produtos.
-- Exibição automática do preço conforme a região selecionada:
-  - `PT` → Real brasileiro (`BRL`)
-  - `US` → Dólar americano (`USD`)
-  - `GB` → Libra esterlina (`GBP`)
-  - `EU` → Euro (`EUR`)
-- Tradução automática dos nomes de categorias e produtos para Português, Inglês e Espanhol pelo Google Apps Script.
-- `US` e `GB` exibem a tradução em inglês, cada um com sua própria moeda.
-- `EU` exibe a tradução em espanhol e o preço em Euro.
-- Compatibilidade com produtos antigos: o valor/moeda já existente é preservado como primeiro preço.
-- Paginação com até 8 produtos por página.
-- Projeto sem `node_modules`, pronto para GitHub e Vercel.
+- PostgreSQL/Supabase: cidades, categorias, produtos, valores, usuários, permissões e histórico.
+- Supabase Auth: login por `username`, mapeado internamente para um e-mail técnico não exibido.
+- Supabase Storage: imagens dos produtos e backups privados.
+- Supabase Realtime: atualização automática do catálogo sem recarregar a página.
+- MyMemory via Edge Functions: tradução inicial PT/EN/ES sem chave paga, com glossário controlado.
+- Vercel: hospedagem do frontend.
 
-## Atualizar o Google Apps Script
+O frontend usa exclusivamente o Supabase. Se as variáveis públicas não estiverem configuradas, o site mostra um erro de configuração e não tenta outro backend.
 
-O frontend desta versão precisa do novo backend presente em:
+## Regra de tradução
 
-```text
-apps-script/Code.gs
-```
+- Na criação de uma categoria ou produto, os idiomas ausentes são traduzidos automaticamente.
+- Depois de criado, editar PT altera somente PT; editar EN altera somente EN; editar ES altera somente ES.
+- O botão manual de tradução continua disponível quando uma nova tradução for desejada.
+- O glossário preserva termos comerciais, por exemplo `Modificações → Modifications → Modificaciones`.
 
-1. Abra a planilha ligada ao projeto.
-2. Acesse **Extensões → Apps Script**.
-3. Substitua o código atual pelo novo `Code.gs`.
-4. Execute `setupProject` uma vez.
-5. Para traduzir categorias e produtos que já existiam antes desta atualização, execute também `translateExistingCatalog`.
-6. Atualize a implantação do Aplicativo da Web criando uma nova versão.
+## Usuários
 
-O Apps Script adicionará automaticamente as colunas `translations` e `prices` sem apagar os dados existentes.
+- Usuários migrados entram como `pending_activation`.
+- O Owner entrega um código de uso único, válido por 24 horas.
+- No primeiro acesso, a pessoa informa username, código e cria sua própria senha.
+- Credenciais antigas não são copiadas; cada usuário define a própria senha na ativação.
+- A permissão de solicitações permite aprovar somente cidades atribuídas, sem conceder cargos ou outras permissões.
 
-## Tradução automática
-
-Ao salvar uma categoria ou produto, o texto digitado no idioma/região atual é enviado ao Apps Script. O backend usa `LanguageApp.translate` para gerar e armazenar versões em:
-
-- Português (`pt`)
-- Inglês (`en`)
-- Espanhol (`es`)
-
-Os nomes criados pelo usuário continuam sendo os dados oficiais; apenas as versões traduzidas são armazenadas junto deles para exibição.
-
-## Executar localmente
-
-Requisitos:
-
-- Node.js 20 ou superior.
-- pnpm 10.
+## Desenvolvimento
 
 ```bash
 pnpm install
+pnpm test
 pnpm dev
 ```
 
-## Gerar versão de produção
+Build de produção:
 
 ```bash
 pnpm build
 ```
 
-## Variável do Apps Script
+Copie `.env.example` para `.env.local` e preencha apenas a URL e a chave pública `anon` no frontend. A chave `service_role` é exclusiva das ferramentas administrativas locais e nunca deve ser enviada ao GitHub ou à Vercel.
 
-Altere o arquivo `.env` quando utilizar outra implantação:
+## Banco e funções
 
-```env
-VITE_APPS_SCRIPT_API_URL=https://script.google.com/macros/s/SEU_ID/exec
+- Migrações SQL: `supabase/migrations/`
+- Edge Functions: `supabase/functions/`
+- Glossário inicial: `supabase/seed/translation-glossary.csv`
+- Plano operacional: `docs/superpowers/plans/2026-08-27-supabase-complete-migration.md`
+
+## Ferramentas de migração
+
+As ferramentas trabalham em quatro etapas, sempre com um snapshot local privado:
+
+```bash
+pnpm migration:normalize -- entrada.json saida-normalizada.json
+pnpm migration:import -- saida-normalizada.json
+pnpm migration:media -- saida-normalizada.json
+pnpm migration:verify -- saida-normalizada.json relatorio.json
 ```
 
-## Publicar no GitHub e Vercel
+O importador é idempotente e preserva IDs, ordem, preços por cidade, traduções, permissões e solicitações. A migração de mídia valida MIME, tamanho e checksum antes do upload.
 
-1. Envie os arquivos desta pasta para a raiz do repositório.
-2. Não envie `node_modules`, `.output`, `dist` ou `.tanstack`.
-3. Importe o repositório no Vercel.
-4. Use `pnpm build` como comando de build.
-5. Cadastre `VITE_APPS_SCRIPT_API_URL` nas variáveis de ambiente do Vercel, caso não mantenha o `.env` no repositório.
+## Publicação
 
+1. Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` na Vercel.
+2. Publique a versão atual do repositório, incluindo os arquivos removidos no commit.
+3. Valide login, Visualizador, edição, Storage e Realtime.
 
-## Traduções e valores por moeda
-
-- Cada categoria é salva em Português, Inglês e Espanhol no mesmo registro.
-- Cada produto mantém um único ID e uma única linha na aba `Products`.
-- O valor em Real permanece na coluna `amount`.
-- Os valores adicionais ficam nas colunas `amountUSD`, `amountGBP` e `amountEUR`.
-- Alterar uma moeda atualiza a coluna correspondente do mesmo produto, sem criar outro registro.
-- Execute `setupProject()` após substituir o Apps Script. Para migrar registros existentes, execute `translateExistingCatalog()`.
-- O seletor inferior contém apenas PT, EN e ES. A moeda exibida é escolhida separadamente no topo do catálogo.
-
-## Migração da estrutura atual
-
-Para corrigir os registros antigos e aplicar `nameBR`, `nameEN`, `nameES`, `amountBRL`, `amountUSD`, `amountGBP` e `amountEUR`, execute `migrateCatalogSchema` no Apps Script após colar o novo `Code.gs`.
+Não reescreva o histórico publicado. Faça um commit normal com inclusões, alterações e exclusões para preservar a integração com o Lovable.
