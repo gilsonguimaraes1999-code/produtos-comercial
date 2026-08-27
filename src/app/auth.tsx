@@ -15,7 +15,7 @@ interface AuthContextValue {
   activationEnabled: boolean;
   login: (username: string, password: string) => Promise<void>;
   activateAccount: (input: { username: string; code: string; password: string }) => Promise<void>;
-  loginAsViewer: (cityName: string) => Promise<void>;
+  loginAsViewer: (cityNames: string[] | string) => Promise<void>;
   logout: () => Promise<void>;
   replaceUser: (user: AuthUser) => void;
 }
@@ -89,22 +89,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async activateAccount(input) {
       await getAuthRepository().activate(input);
     },
-    async loginAsViewer(cityName) {
-      const cityResult = await getSupabaseBrowserClient().from('cities').select('id, name').eq('name', cityName.trim()).single();
-      if (cityResult.error || !cityResult.data) throw new Error('INVALID_ACCESS_CITY');
+    async loginAsViewer(cityNames) {
+      const requestedNames = Array.isArray(cityNames) ? cityNames : [cityNames];
+      const normalizedNames = [...new Set(requestedNames.map((name) => name.trim()).filter(Boolean))];
+      if (!normalizedNames.length) throw new Error('INVALID_ACCESS_CITY');
+
+      const cityResult = await getSupabaseBrowserClient().from('cities').select('id, name').in('name', normalizedNames);
+      if (cityResult.error || !cityResult.data || cityResult.data.length !== normalizedNames.length) {
+        throw new Error('INVALID_ACCESS_CITY');
+      }
+
       const catalog = await fetchCatalogSnapshot(getCatalogRepository(), 'pt');
-      const cityId = cityResult.data.id;
-      const visibleCategoryIds = new Set(catalog.categories.filter((item) => item.cityId === cityId).map((item) => item.id));
+      const selectedCityIds = new Set(cityResult.data.map((city) => city.id));
+      const visibleCities = catalog.cities.filter((item) => selectedCityIds.has(item.id));
+      if (visibleCities.length !== normalizedNames.length) throw new Error('INVALID_ACCESS_CITY');
+
+      const cityIds = visibleCities.map((city) => city.id);
+      const visibleCategoryIds = new Set(catalog.categories.filter((item) => selectedCityIds.has(item.cityId)).map((item) => item.id));
       const visibleCatalog = {
         ...catalog,
-        cities: catalog.cities.filter((item) => item.id === cityId),
-        categories: catalog.categories.filter((item) => item.cityId === cityId),
+        cities: visibleCities,
+        categories: catalog.categories.filter((item) => selectedCityIds.has(item.cityId)),
         products: catalog.products.filter((item) => visibleCategoryIds.has(item.categoryId)),
         descriptionTemplates: (catalog.descriptionTemplates || []).filter((item) => visibleCategoryIds.has(item.categoryId)),
       };
+      const viewerId = `viewer:${cityIds.join(',')}`;
       const next: SessionData = {
-        token: `viewer:${cityId}`,
-        user: { id: `viewer:${cityId}`, name: cityResult.data.name, username: 'viewer', role: 'COMERCIAL', status: 'Ativo', allowedCityIds: [cityId], permissions: { product: {} } },
+        token: viewerId,
+        user: { id: viewerId, name: visibleCities.map((city) => city.name).join(', '), username: 'viewer', role: 'COMERCIAL', status: 'Ativo', allowedCityIds: cityIds, permissions: { product: {} } },
         catalog: visibleCatalog,
       };
       setSession(next);
