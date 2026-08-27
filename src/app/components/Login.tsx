@@ -31,7 +31,7 @@ export function Login() {
   const [cities, setCities] = useState<string[]>([]);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [requestForm, setRequestForm] = useState(blankAccessRequest);
-  const [viewerCity, setViewerCity] = useState('');
+  const [viewerCities, setViewerCities] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [activationForm, setActivationForm] = useState({
     username: '',
@@ -178,11 +178,11 @@ export function Login() {
 
   async function submitViewerAccess(event: FormEvent) {
     event.preventDefault();
-    if (!viewerCity) return setError(t('viewerCityRequired'));
+    if (!viewerCities.length) return setError(t('viewerCityRequired'));
     setLoading(true);
     setError('');
     try {
-      await loginAsViewer(viewerCity);
+      await loginAsViewer(viewerCities);
     } catch (err) {
       console.error(err);
       setError(translateAppError(err, t, 'requestFailed'));
@@ -505,24 +505,32 @@ export function Login() {
                   <button type="button" className="login-select-trigger" onClick={() => setCityMenuOpen((open) => !open)} aria-expanded={cityMenuOpen}>
                     <span className="login-select-value">
                       <span className="login-select-icon" aria-hidden="true"><Building2 size={15} /></span>
-                      <span>{viewerCity || t('selectCity')}</span>
+                      <span>{viewerCities.length ? viewerCities.join(', ') : t('selectCity')}</span>
                     </span>
                     <ChevronDown size={16} className="login-select-caret" />
                   </button>
                   {cityMenuOpen && (
                     <div className="login-select-menu">
-                      {cities.map((city) => (
-                        <button
-                          type="button"
-                          key={city}
-                          className={`login-select-option ${viewerCity === city ? 'is-selected' : ''}`}
-                          aria-pressed={viewerCity === city}
-                          onClick={() => { setViewerCity(city); setCityMenuOpen(false); setError(''); }}
-                        >
-                          <span className="login-select-dot" aria-hidden="true" />
-                          <span>{city}</span>
-                        </button>
-                      ))}
+                      {cities.map((city) => {
+                        const selected = viewerCities.includes(city);
+                        return (
+                          <button
+                            type="button"
+                            key={city}
+                            className={`login-select-option ${selected ? 'is-selected' : ''}`}
+                            aria-pressed={selected}
+                            onClick={() => {
+                              setViewerCities((current) => current.includes(city)
+                                ? current.filter((item) => item !== city)
+                                : [...current, city]);
+                              setError('');
+                            }}
+                          >
+                            <span className="login-select-dot" aria-hidden="true" />
+                            <span>{city}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
