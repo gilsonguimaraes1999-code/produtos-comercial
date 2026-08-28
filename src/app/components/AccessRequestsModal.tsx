@@ -1,9 +1,8 @@
 import { ArrowLeft, Building2, Check, Clock, ClipboardCheck, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { translateAppError, useTranslation } from '../../i18n';
-import { accessRequestsApi } from '../api';
+import { useAccessRequests } from '../hooks/useAccessRequests';
 import { useAuth } from '../auth';
-import { normalizeUserPermissions } from '../permissions';
 import type { AccessRequest, AuthUser, City } from '../types';
 import { UserFilterSelect } from './UserFilterControls';
 
@@ -11,55 +10,55 @@ function requestedNames(item: AccessRequest) {
   return (item.requestedCityNames?.length ? item.requestedCityNames : [item.cityName]).filter(Boolean);
 }
 
+export type AccessRequestsController = ReturnType<typeof useAccessRequests>;
+
 export function AccessRequestsPage({
   cities,
   onClose,
-  onUsersChanged,
-  onRequestsChanged,
 }: {
   cities: City[];
   onClose: () => void;
-  onUsersChanged?: (users: AuthUser[]) => void;
-  onRequestsChanged?: (requests: AccessRequest[]) => void;
+}) {
+  const controller = useAccessRequests();
+  return <AccessRequestsContent cities={cities} onClose={onClose} controller={controller} />;
+}
+
+export function AccessRequestsContent({
+  cities,
+  onClose,
+  controller,
+  onUsersChanged,
+}: {
+  cities: City[];
+  onClose: () => void;
+  controller: AccessRequestsController;
+  onUsersChanged?: (user: AuthUser) => void;
 }) {
   const { t } = useTranslation();
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const owner = user?.role === 'OWNER';
   const availableCities = useMemo(() => owner || user?.allowedCityIds === undefined
     ? cities
     : cities.filter((city) => user.allowedCityIds?.includes(city.id)), [cities, owner, user?.allowedCityIds]);
-  const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [cityFilter, setCityFilter] = useState('ALL');
   const [citySelections, setCitySelections] = useState<Record<string, string[]>>({});
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState<unknown>(null);
 
   useEffect(() => {
-    let active = true;
-    accessRequestsApi.list(token)
-      .then((result) => {
-        if (!active) return;
-        setRequests(result.requests);
-        setCitySelections(Object.fromEntries(result.requests.map((item) => [
-          item.id,
-          cities.filter((city) => requestedNames(item).includes(city.name)).map((city) => city.id),
-        ])));
-      })
-      .catch((err) => {
-        console.error(err);
-        if (active) setError(translateAppError(err, t, 'requestFailed'));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => { active = false; };
-  }, [cities, t, token]);
+    setCitySelections((current) => ({
+      ...Object.fromEntries(controller.requests.map((item) => [
+        item.id,
+        cities.filter((city) => requestedNames(item).includes(city.name)).map((city) => city.id),
+      ])),
+      ...current,
+    }));
+  }, [cities, controller.requests]);
 
-  const visibleRequests = useMemo(() => requests
+  const visibleRequests = useMemo(() => controller.requests
     .filter((item) => item.status === 'PENDENTE')
     .filter((item) => cityFilter === 'ALL' || requestedNames(item).includes(cities.find((city) => city.id === cityFilter)?.name || '')),
-  [cities, cityFilter, requests]);
+  [cities, cityFilter, controller.requests]);
 
   function toggleCity(itemId: string, cityId: string) {
     setCitySelections((current) => {
@@ -70,21 +69,15 @@ export function AccessRequestsPage({
 
   async function approve(item: AccessRequest) {
     setBusyId(item.id);
-    setError('');
+    setLocalError(null);
     try {
-      const result = await accessRequestsApi.approve(
-        token,
-        item.id,
-        'COMERCIAL',
-        normalizeUserPermissions(undefined),
-        owner ? citySelections[item.id] || [] : undefined,
-      );
-      setRequests(result.requests);
-      onRequestsChanged?.(result.requests);
-      if (result.users?.length) onUsersChanged?.(result.users);
-    } catch (err) {
-      console.error(err);
-      setError(translateAppError(err, t, 'saveUserError'));
+      const approvedCityIds = owner
+        ? citySelections[item.id] || []
+        : cities.filter((city) => requestedNames(item).includes(city.name)).map((city) => city.id);
+      const result = await controller.approve(item.id, approvedCityIds);
+      if (result.user) onUsersChanged?.(result.user);
+    } catch (error) {
+      setLocalError(error);
     } finally {
       setBusyId(null);
     }
@@ -92,19 +85,17 @@ export function AccessRequestsPage({
 
   async function reject(item: AccessRequest) {
     setBusyId(item.id);
-    setError('');
+    setLocalError(null);
     try {
-      const result = await accessRequestsApi.reject(token, item.id);
-      setRequests(result.requests);
-      onRequestsChanged?.(result.requests);
-    } catch (err) {
-      console.error(err);
-      setError(translateAppError(err, t, 'requestFailed'));
+      await controller.reject(item.id);
+    } catch (error) {
+      setLocalError(error);
     } finally {
       setBusyId(null);
     }
   }
 
+  const error = localError || controller.error;
   return (
     <section className="users-layout users-page access-requests-page">
       <div className="template-page-head users-page-head">
@@ -117,8 +108,8 @@ export function AccessRequestsPage({
           <div><strong>{t('accessRequests')}</strong><p>{t('accessRequestsCityHint')}</p></div>
           <label className="request-city-filter"><span>{t('city')}</span><UserFilterSelect value={cityFilter} onChange={setCityFilter} ariaLabel={t('filterRequestsByCity')} icon={Building2} options={[{ value: 'ALL', label: t('allAllowedCities') }, ...availableCities.map((city) => ({ value: city.id, label: city.name }))]} /></label>
         </div>
-        {error && <p className="form-error normal-case">{error}</p>}
-        {loading ? <div className="center-message"><span className="spinner" /> {t('loadingAccessRequests')}</div> : visibleRequests.length ? (
+        {error ? <p className="form-error normal-case">{translateAppError(error, t, 'requestFailed')}</p> : null}
+        {controller.loading ? <div className="center-message"><span className="spinner" /> {t('loadingAccessRequests')}</div> : visibleRequests.length ? (
           <div className="access-requests-list access-requests-modal-list">
             {visibleRequests.map((item) => (
               <article key={item.id}>

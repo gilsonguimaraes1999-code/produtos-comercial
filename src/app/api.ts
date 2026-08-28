@@ -1,6 +1,7 @@
 import type {
   AccessRequest,
   AccessRequestPayload,
+  AccessRequestReceipt,
   AuthUser,
   BackupRecord,
   BackupResult,
@@ -66,12 +67,12 @@ export const accessRequestsApi = {
       .select('id, name')
       .in('name', requestData.requestedCityNames);
     if (cityResult.error) throw cityResult.error;
-    const id = await getAccessRequestsRepository().create(
+    const receipt = await getAccessRequestsRepository().create(
       requestData,
       (cityResult.data || []).map((row) => row.id),
     );
     const request: AccessRequest = {
-      id,
+      id: receipt.requestId,
       name: requestData.name,
       username: requestData.username,
       cityName: requestData.cityName,
@@ -79,7 +80,10 @@ export const accessRequestsApi = {
       status: 'PENDENTE',
       approved: false,
     };
-    return { request };
+    return { request, receipt };
+  },
+  async status(receipt: AccessRequestReceipt) {
+    return getAccessRequestsRepository().status(receipt);
   },
   async list(_token: string) {
     return { requests: await getAccessRequestsRepository().list() };
@@ -91,19 +95,11 @@ export const accessRequestsApi = {
     _permissions?: UserPermissions,
     allowedCityIds?: string[],
   ) {
-    await getAccessRequestsRepository().approve(id, allowedCityIds || []);
-    const requests = await getAccessRequestsRepository().list();
-    let users: AuthUser[] = [];
-    try {
-      users = await getUsersRepository().list();
-    } catch {
-      // Gestores de cidade podem responder solicitações sem listar todas as contas.
-    }
-    return { users, requests };
+    const result = await getAccessRequestsRepository().approve(id, allowedCityIds || []);
+    return { ...result, users: result.user ? [result.user] : [] };
   },
   async reject(_token: string, id: string) {
-    await getAccessRequestsRepository().reject(id);
-    return { requests: await getAccessRequestsRepository().list() };
+    return getAccessRequestsRepository().reject(id);
   },
 };
 

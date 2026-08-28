@@ -27,6 +27,15 @@ export type UserPermissions = {
   };
 };
 
+export interface VersionedEntity {
+  version?: number | undefined;
+}
+
+export interface MutationResult {
+  id: string;
+  version: number;
+}
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -62,13 +71,31 @@ export interface AccessRequestPayload {
   requestedCityNames: string[];
 }
 
+export interface AccessRequestReceipt {
+  requestId: string;
+  trackingSecret: string;
+  submissionKey: string;
+}
+
+export interface AccessRequestTrackingStatus {
+  status: Exclude<AccessRequestStatus, 'REMOVIDO'>;
+  reviewedAt?: string;
+  rejectionReason?: string;
+}
+
+export interface AccessRequestReviewResult {
+  request: AccessRequest;
+  user?: AuthUser;
+  activation?: unknown;
+}
+
 export interface SessionData {
   token: string;
   user: AuthUser;
   catalog?: CatalogSnapshot;
 }
 
-export interface Category {
+export interface Category extends VersionedEntity {
   id: string;
   cityId: string;
   title: string;
@@ -79,7 +106,7 @@ export interface Category {
   updatedAt?: string;
 }
 
-export interface City {
+export interface City extends VersionedEntity {
   id: string;
   name: string;
   order: number;
@@ -98,7 +125,7 @@ export interface ProductImage {
   thumbnailUrl?: string | undefined;
 }
 
-export interface Product {
+export interface Product extends VersionedEntity {
   id: string;
   categoryId: string;
   coordinates?: string;
@@ -120,7 +147,7 @@ export interface Product {
   updatedAt?: string;
 }
 
-export interface DescriptionTemplate {
+export interface DescriptionTemplate extends VersionedEntity {
   id: string;
   categoryId: string;
   title: string;
@@ -174,7 +201,7 @@ export interface DraftImageInput {
   thumbnailUrl?: string | undefined;
 }
 
-export interface CategoryPayload {
+export interface CategoryPayload extends VersionedEntity {
   id?: string | undefined;
   cityId: string;
   title: string;
@@ -182,7 +209,7 @@ export interface CategoryPayload {
   sourceLanguage: ContentLanguage;
 }
 
-export interface ProductPayload {
+export interface ProductPayload extends VersionedEntity {
   id?: string | undefined;
   categoryId: string;
   coordinates?: string;
@@ -204,12 +231,12 @@ export interface ProductPayload {
   images: DraftImageInput[];
 }
 
-export interface CityPayload {
+export interface CityPayload extends VersionedEntity {
   id?: string | undefined;
   name: string;
 }
 
-export interface DescriptionTemplatePayload {
+export interface DescriptionTemplatePayload extends VersionedEntity {
   id?: string | undefined;
   categoryId: string;
   title: string;

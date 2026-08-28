@@ -37,6 +37,7 @@ import { CatalogIcon } from '../icons';
 import { contentLanguageFor, defaultCurrencyByLanguage, languageByCurrency, localizedCategoryTitle, localizedProductDescription, localizedProductName, localizedProductPrice, normalizedPrices } from '../localization';
 import { knownMansionCoordinatesForProduct, knownMansionStorageForProduct, localizedMansionNameFromNumber, mansionNumberForProduct, normalizeMansionDescriptionCoordinates } from '../mansionData';
 import { isVideoMedia, mediaThumbUrl } from '../media';
+import { continueOrderDraft, type CatalogOrderDraft } from '../orderDraft';
 import { canManageAccessRequests, hasAnyProductPermission, hasProductPermission, PRODUCT_PERMISSIONS } from '../permissions';
 import type { Category, CategoryPayload, City, CityPayload, CurrencyCode, DescriptionTemplate, DraftImageInput, Product, ProductPayload, ProductPermission } from '../types';
 import { BackupDialog } from './BackupDialog';
@@ -439,6 +440,7 @@ export function CatalogApp() {
     reorderProducts,
     saveDescriptionTemplate,
     deleteDescriptionTemplate,
+    busyEntityIds,
   } = useCatalog();
   const owner = user?.role === 'OWNER';
   const viewer = Boolean(user?.id.startsWith('viewer:'));
@@ -489,8 +491,8 @@ export function CatalogApp() {
   const [productsPerPage, setProductsPerPage] = useState<ProductsPerPage>('10');
   const [productSortMode, setProductSortMode] = useState<ProductSortMode>('manual');
   const [productViewMode, setProductViewMode] = useState<ProductViewMode>('grid');
-  const [pendingCategoryIds, setPendingCategoryIds] = useState<string[] | null>(null);
-  const [pendingProductOrders, setPendingProductOrders] = useState<Record<string, string[]>>({});
+  const [pendingCategoryOrders, setPendingCategoryOrders] = useState<Record<string, CatalogOrderDraft>>({});
+  const [pendingProductOrders, setPendingProductOrders] = useState<Record<string, CatalogOrderDraft>>({});
   const [pendingCitySaves, setPendingCitySaves] = useState<Record<string, CityPayload>>({});
   const [pendingCategorySaves, setPendingCategorySaves] = useState<Record<string, CategoryPayload>>({});
   const [pendingProductSaves, setPendingProductSaves] = useState<Record<string, ProductPayload>>({});
@@ -519,22 +521,18 @@ export function CatalogApp() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const orderedCategories = useMemo(
-    () => orderByIds(catalog.categories, pendingCategoryIds),
-    [catalog.categories, pendingCategoryIds],
-  );
   const hasPendingDataChanges = (
     Object.keys(pendingCitySaves).length > 0 ||
     Object.keys(pendingCategorySaves).length > 0 ||
     Object.keys(pendingProductSaves).length > 0
   );
-  const hasPendingOrderChanges = Boolean(pendingCategoryIds) || Object.keys(pendingProductOrders).length > 0;
+  const hasPendingOrderChanges = Object.keys(pendingCategoryOrders).length > 0 || Object.keys(pendingProductOrders).length > 0;
   const hasPendingChanges = hasPendingOrderChanges || hasPendingDataChanges;
 
   function productsFor(categoryId: string) {
     const orderedProducts = orderByIds(
       catalog.products.filter((product) => product.categoryId === categoryId),
-      pendingProductOrders[categoryId],
+      pendingProductOrders[categoryId]?.requestedOrder,
     );
     if (pendingProductOrders[categoryId]) return orderedProducts;
 
@@ -1007,8 +1005,11 @@ export function CatalogApp() {
     return catalog.cities.filter((city) => allowed.has(city.id));
   }, [catalog.cities, owner, user?.allowedCityIds]);
   const visibleCategories = useMemo(
-    () => orderedCategories.filter((category) => !activeCityId || category.cityId === activeCityId),
-    [activeCityId, orderedCategories],
+    () => orderByIds(
+      catalog.categories.filter((category) => !activeCityId || category.cityId === activeCityId),
+      activeCityId ? pendingCategoryOrders[activeCityId]?.requestedOrder : undefined,
+    ),
+    [activeCityId, catalog.categories, pendingCategoryOrders],
   );
   const previewedVisibleCategories = visibleCategories;
 
@@ -1557,12 +1558,12 @@ export function CatalogApp() {
   }
 
   function saveQueueCopy() {
-    const categoryIds = pendingCategoryIds;
-    const productOrders = Object.entries(pendingProductOrders).map(([categoryId, productIds]) => ({ categoryId, productIds }));
+    const categoryOrders = Object.entries(pendingCategoryOrders).map(([cityId, orderDraft]) => ({ cityId, ...orderDraft }));
+    const productOrders = Object.entries(pendingProductOrders).map(([categoryId, orderDraft]) => ({ categoryId, ...orderDraft }));
     const citySaves = Object.entries(pendingCitySaves).map(([key, payload]) => ({ key, payload }));
     const categorySaves = Object.entries(pendingCategorySaves).map(([key, payload]) => ({ key, payload }));
     const productSaves = Object.entries(pendingProductSaves).map(([key, payload]) => ({ key, payload }));
-    return { categoryIds, productOrders, citySaves, categorySaves, productSaves };
+    return { categoryOrders, productOrders, citySaves, categorySaves, productSaves };
   }
 
   function pendingSaveLabel(kind: 'city' | 'category' | 'product' | 'categoryOrder' | 'productOrder', payload?: CityPayload | CategoryPayload | ProductPayload) {
@@ -1634,8 +1635,15 @@ export function CatalogApp() {
     const targetCategory = visibleCategories[targetIndex];
     if (!targetCategory) return;
 
-    const ids = swapById(orderedCategories, category.id, targetCategory.id).map((item) => item.id);
-    setPendingCategoryIds(ids);
+    const ids = swapById(visibleCategories, category.id, targetCategory.id).map((item) => item.id);
+    const baseline = catalog.categories
+      .filter((item) => item.cityId === category.cityId)
+      .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id))
+      .map((item) => item.id);
+    setPendingCategoryOrders((current) => ({
+      ...current,
+      [category.cityId]: continueOrderDraft(current[category.cityId], baseline, ids),
+    }));
     setToast({ kind: 'success', message: t('pendingChanges') });
   }
 
@@ -1659,7 +1667,11 @@ export function CatalogApp() {
     const nextProducts = insertById(productsFor(targetCategoryId), productId, targetProductId, insertPosition);
     setPendingProductOrders((current) => ({
       ...current,
-      [targetCategoryId]: nextProducts.map((item) => item.id),
+      [targetCategoryId]: continueOrderDraft(
+        current[targetCategoryId],
+        catalog.products.filter((item) => item.categoryId === targetCategoryId).sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)).map((item) => item.id),
+        nextProducts.map((item) => item.id),
+      ),
     }));
   }
 
@@ -1674,7 +1686,11 @@ export function CatalogApp() {
     [nextProducts[currentIndex], nextProducts[targetIndex]] = [nextProducts[targetIndex]!, nextProducts[currentIndex]!];
     setPendingProductOrders((current) => ({
       ...current,
-      [product.categoryId]: nextProducts.map((item) => item.id),
+      [product.categoryId]: continueOrderDraft(
+        current[product.categoryId],
+        catalog.products.filter((item) => item.categoryId === product.categoryId).sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)).map((item) => item.id),
+        nextProducts.map((item) => item.id),
+      ),
     }));
   }
 
@@ -1684,24 +1700,42 @@ export function CatalogApp() {
   }
 
   async function queueCitySave(city: CityPayload) {
+    if (city.id) {
+      const result = await saveCity(city);
+      setCityModalOpen(false);
+      return result;
+    }
     const key = city.id || pendingDraftKey('city');
     setPendingCitySaves((current) => ({ ...current, [key]: city }));
     setCityModalOpen(false);
     setToast({ kind: 'success', message: t('pendingChanges') });
+    return undefined;
   }
 
   async function queueCategorySave(category: CategoryPayload) {
+    if (category.id) {
+      const result = await saveCategory(category);
+      setCategoryModal(null);
+      return result;
+    }
     const key = category.id || pendingDraftKey('category');
     setPendingCategorySaves((current) => ({ ...current, [key]: category }));
     setCategoryModal(null);
     setToast({ kind: 'success', message: t('pendingChanges') });
+    return undefined;
   }
 
   async function queueProductSave(product: ProductPayload) {
+    if (product.id) {
+      const result = await saveProduct(product);
+      setProductModal(null);
+      return result;
+    }
     const key = product.id || pendingDraftKey('product');
     setPendingProductSaves((current) => ({ ...current, [key]: product }));
     setProductModal(null);
     setToast({ kind: 'success', message: t('pendingChanges') });
+    return undefined;
   }
 
   async function savePendingChanges() {
@@ -1726,12 +1760,12 @@ export function CatalogApp() {
         type: 'product' as const,
         status: 'pending' as const,
       })),
-      ...(queue.categoryIds ? [{
-        id: 'order:categories',
+      ...queue.categoryOrders.map(({ cityId }) => ({
+        id: `order:categories:${cityId}`,
         label: pendingSaveLabel('categoryOrder'),
         type: 'order' as const,
         status: 'pending' as const,
-      }] : []),
+      })),
       ...queue.productOrders.map(({ categoryId }) => ({
         id: `order:products:${categoryId}`,
         label: pendingSaveLabel('productOrder'),
@@ -1746,7 +1780,7 @@ export function CatalogApp() {
     const failedCategoryKeys = new Set<string>();
     const failedProductKeys = new Set<string>();
     const failedProductOrderCategoryIds = new Set<string>();
-    let categoryOrderFailed = false;
+    const failedCategoryOrderCityIds = new Set<string>();
     let done = 0;
     let currentItems = items;
 
@@ -1817,25 +1851,25 @@ export function CatalogApp() {
       }
     }
 
-    if (queue.categoryIds) {
-      const id = 'order:categories';
+    for (const { cityId, requestedOrder, expectedOrder } of queue.categoryOrders) {
+      const id = `order:categories:${cityId}`;
       const label = pendingSaveLabel('categoryOrder');
       setItemStatus(id, 'running');
       try {
-        await reorderCategories(queue.categoryIds);
+        await reorderCategories(requestedOrder, expectedOrder);
         finishItem(id);
       } catch (err) {
-        categoryOrderFailed = true;
+        failedCategoryOrderCityIds.add(cityId);
         failItem(id, label, err);
       }
     }
 
-    for (const { categoryId, productIds } of queue.productOrders) {
+    for (const { categoryId, requestedOrder, expectedOrder } of queue.productOrders) {
       const id = `order:products:${categoryId}`;
       const label = pendingSaveLabel('productOrder');
       setItemStatus(id, 'running');
       try {
-        await reorderProducts([{ categoryId, productIds }]);
+        await reorderProducts([{ categoryId, productIds: requestedOrder, expectedOrder }]);
         finishItem(id);
       } catch (err) {
         failedProductOrderCategoryIds.add(categoryId);
@@ -1846,7 +1880,7 @@ export function CatalogApp() {
     setPendingCitySaves((current) => Object.fromEntries(Object.entries(current).filter(([key]) => failedCityKeys.has(key))));
     setPendingCategorySaves((current) => Object.fromEntries(Object.entries(current).filter(([key]) => failedCategoryKeys.has(key))));
     setPendingProductSaves((current) => Object.fromEntries(Object.entries(current).filter(([key]) => failedProductKeys.has(key))));
-    setPendingCategoryIds(categoryOrderFailed ? queue.categoryIds : null);
+    setPendingCategoryOrders((current) => Object.fromEntries(Object.entries(current).filter(([cityId]) => failedCategoryOrderCityIds.has(cityId))));
     setPendingProductOrders((current) => Object.fromEntries(Object.entries(current).filter(([categoryId]) => failedProductOrderCategoryIds.has(categoryId))));
 
     setBusyProgress({
@@ -1873,7 +1907,7 @@ export function CatalogApp() {
     setPendingCitySaves({});
     setPendingCategorySaves({});
     setPendingProductSaves({});
-    setPendingCategoryIds(null);
+    setPendingCategoryOrders({});
     setPendingProductOrders({});
     clearProductPreview();
     dragRef.current = null;
@@ -1932,7 +1966,7 @@ export function CatalogApp() {
                         <button
                           type="button"
                           className="sidebar-order-button"
-                          disabled={categoryIndex <= 0 || Boolean(busyMessage)}
+                          disabled={categoryIndex <= 0 || busyEntityIds.has(category.id) || busyEntityIds.has(`order:categories:${category.cityId}`)}
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -1946,7 +1980,7 @@ export function CatalogApp() {
                         <button
                           type="button"
                           className="sidebar-order-button"
-                          disabled={categoryIndex >= previewedVisibleCategories.length - 1 || Boolean(busyMessage)}
+                          disabled={categoryIndex >= previewedVisibleCategories.length - 1 || busyEntityIds.has(category.id) || busyEntityIds.has(`order:categories:${category.cityId}`)}
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -2122,12 +2156,13 @@ export function CatalogApp() {
               {(owner || canCreateProduct || canCloneCategory) && (
                 <div className="owner-actions" style={{ justifyContent: 'flex-start', margin: '18px 0 24px' }}>
                   {canCreateProduct && <button type="button" className="secondary-button" onClick={() => { setDefaultCategoryId(activeCategory.id); setProductModal('new'); }}><Plus size={16} /> {t('product')}</button>}
-                  {owner && <button type="button" className="secondary-button" onClick={() => setCategoryModal(activeCategory)}><Pencil size={16} /> {t('editCategory')}</button>}
-                  {canCloneCategory && <button type="button" className="secondary-button" onClick={() => setCloneCategoryModal(activeCategory)}><CopyPlus size={16} /> {t('cloneCategory')}</button>}
+                  {owner && <button type="button" className="secondary-button" disabled={busyEntityIds.has(activeCategory.id)} onClick={() => setCategoryModal(activeCategory)}><Pencil size={16} /> {t('editCategory')}</button>}
+                  {canCloneCategory && <button type="button" className="secondary-button" disabled={busyEntityIds.has(activeCategory.id)} onClick={() => setCloneCategoryModal(activeCategory)}><CopyPlus size={16} /> {t('cloneCategory')}</button>}
                   {owner && (
                     <button
                       type="button"
                       className="secondary-button"
+                      disabled={busyEntityIds.has(activeCategory.id)}
                       onClick={() =>
                         setConfirmState({
                           title: t('deleteCategory'),
@@ -2146,7 +2181,7 @@ export function CatalogApp() {
                     <button
                       type="button"
                       className="secondary-button"
-                      disabled={!activeProducts.length || Boolean(busyMessage)}
+                      disabled={!activeProducts.length || activeProducts.some((product) => busyEntityIds.has(product.id))}
                       onClick={() => void standardizeActiveCategoryDescriptions()}
                     >
                       <Wand2 size={16} /> {t('standardizeDescriptions')}
@@ -2156,7 +2191,7 @@ export function CatalogApp() {
                     <button
                       type="button"
                       className="secondary-button"
-                      disabled={!activeProducts.length || Boolean(busyMessage)}
+                      disabled={!activeProducts.length || activeProducts.some((product) => busyEntityIds.has(product.id))}
                       onClick={() => void translateActiveCategoryProducts()}
                     >
                       <Languages size={16} /> {t('translateProducts')}
@@ -2178,7 +2213,7 @@ export function CatalogApp() {
                       <button
                         type="button"
                         className="secondary-button"
-                        disabled={!activeProducts.length || Boolean(busyMessage)}
+                        disabled={!activeProducts.length || activeProducts.some((product) => busyEntityIds.has(product.id))}
                         onClick={() => mansionPhotoInputRef.current?.click()}
                       >
                         <ImageUp size={16} /> {t('updateMansionPhotos')}
@@ -2196,6 +2231,8 @@ export function CatalogApp() {
                   {pagedProducts.map((product) => {
                     const categoryProducts = productsFor(product.categoryId);
                     const productOrderIndex = categoryProducts.findIndex((item) => item.id === product.id);
+                    const productBusy = busyEntityIds.has(product.id);
+                    const productOrderBusy = busyEntityIds.has(`order:products:${product.categoryId}`);
                     return (
                       <ProductCard
                         key={product.id}
@@ -2224,13 +2261,13 @@ export function CatalogApp() {
                         }
                         onMoveUp={() => void moveProductStep(product, -1)}
                         onMoveDown={() => void moveProductStep(product, 1)}
-                        canEdit={canEditProduct}
-                        canClone={canCloneProduct}
-                        canDelete={canDeleteProduct}
-                        canMoveUp={canMoveProduct && productSortMode === 'manual' && productOrderIndex > 0 && !busyMessage}
-                        canMoveDown={canMoveProduct && productSortMode === 'manual' && productOrderIndex >= 0 && productOrderIndex < categoryProducts.length - 1 && !busyMessage}
+                        canEdit={canEditProduct && !productBusy}
+                        canClone={canCloneProduct && !productBusy}
+                        canDelete={canDeleteProduct && !productBusy}
+                        canMoveUp={canMoveProduct && productSortMode === 'manual' && productOrderIndex > 0 && !productBusy && !productOrderBusy}
+                        canMoveDown={canMoveProduct && productSortMode === 'manual' && productOrderIndex >= 0 && productOrderIndex < categoryProducts.length - 1 && !productBusy && !productOrderBusy}
                         showOrderActions={canMoveProduct && productViewMode === 'list'}
-                        showMoveGrip={canMoveProduct && productViewMode === 'list' && productSortMode === 'manual'}
+                        showMoveGrip={canMoveProduct && productViewMode === 'list' && productSortMode === 'manual' && !productBusy && !productOrderBusy}
                         onMovePointerDown={(event) => startProductPointerDrag(product, event)}
                       />
                     );

@@ -4,8 +4,10 @@ import { useAuth } from '../auth';
 import { accessRequestsApi } from '../api';
 import { translateAppError, useTranslation } from '../../i18n';
 import { StarfieldBackground } from './StarfieldBackground';
+import type { AccessRequestReceipt, AccessRequestTrackingStatus } from '../types';
 
 const SAVED_LOGIN_KEY = 'sg_showcase_saved_login';
+const ACCESS_REQUEST_RECEIPT_KEY = 'sg_access_request_receipt';
 type LoginStep = 'start' | 'user' | 'password';
 type LoginMode = 'login' | 'request' | 'viewer' | 'activation';
 
@@ -17,6 +19,16 @@ const blankAccessRequest = {
   requestedCityNames: [] as string[],
 };
 
+function readAccessRequestReceipt(): AccessRequestReceipt | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(ACCESS_REQUEST_RECEIPT_KEY) || 'null') as AccessRequestReceipt | null;
+    return value?.requestId && value.trackingSecret && value.submissionKey ? value : null;
+  } catch {
+    sessionStorage.removeItem(ACCESS_REQUEST_RECEIPT_KEY);
+    return null;
+  }
+}
+
 export function Login() {
   const { login, activateAccount, activationEnabled, loginAsViewer } = useAuth();
   const { t } = useTranslation();
@@ -27,7 +39,11 @@ export function Login() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<LoginMode>('login');
+  const [mode, setMode] = useState<LoginMode>(() => readAccessRequestReceipt() ? 'request' : 'login');
+  const [requestTracking, setRequestTracking] = useState<(AccessRequestTrackingStatus & { receipt: AccessRequestReceipt }) | null>(() => {
+    const receipt = readAccessRequestReceipt();
+    return receipt ? { receipt, status: 'PENDENTE' } : null;
+  });
   const [cities, setCities] = useState<string[]>([]);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [requestForm, setRequestForm] = useState(blankAccessRequest);
@@ -69,6 +85,46 @@ export function Login() {
   useEffect(() => {
     void loadCities().catch((err) => console.error(err));
   }, []);
+
+  useEffect(() => {
+    if (mode !== 'request' || requestTracking?.status !== 'PENDENTE') return;
+    let active = true;
+    let checking = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const isHidden = () => document.visibilityState === 'hidden';
+    const checkStatus = async () => {
+      if (isHidden() || checking) return;
+      checking = true;
+      try {
+        const status = await accessRequestsApi.status(requestTracking.receipt);
+        if (!active) return;
+        setRequestTracking((current) => current ? { ...current, ...status } : current);
+        if (status.status === 'REPROVADO') sessionStorage.removeItem(ACCESS_REQUEST_RECEIPT_KEY);
+        if (status.status === 'PENDENTE' && !isHidden()) {
+          timer = setTimeout(checkStatus, 1500);
+        }
+      } catch (statusError) {
+        console.error(statusError);
+        if (active && !isHidden()) timer = setTimeout(checkStatus, 1500);
+      } finally {
+        checking = false;
+      }
+    };
+    const resume = () => {
+      if (isHidden()) return;
+      if (timer) clearTimeout(timer);
+      void checkStatus();
+    };
+    timer = setTimeout(checkStatus, 1500);
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('focus', resume);
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('focus', resume);
+    };
+  }, [mode, requestTracking?.receipt, requestTracking?.status]);
 
   function submitUsername(event: FormEvent) {
     event.preventDefault();
@@ -131,6 +187,14 @@ export function Login() {
     setSuccess('');
   }
 
+  function restartAccessRequest() {
+    sessionStorage.removeItem(ACCESS_REQUEST_RECEIPT_KEY);
+    setRequestTracking(null);
+    setRequestForm(blankAccessRequest);
+    setError('');
+    setSuccess('');
+  }
+
   function backToLobby() {
     setStep('start');
     setPassword('');
@@ -164,10 +228,18 @@ export function Login() {
     setError('');
     setSuccess('');
     try {
-      await accessRequestsApi.create(payload);
+      const result = await accessRequestsApi.create(payload);
+      sessionStorage.setItem(ACCESS_REQUEST_RECEIPT_KEY, JSON.stringify(result.receipt));
+      setRequestTracking({ receipt: result.receipt, status: 'PENDENTE' });
       setRequestForm(blankAccessRequest);
       setCityMenuOpen(false);
-      setSuccess(t('accessRequestSent'));
+      try {
+        const status = await accessRequestsApi.status(result.receipt);
+        setRequestTracking({ receipt: result.receipt, ...status });
+        if (status.status === 'REPROVADO') sessionStorage.removeItem(ACCESS_REQUEST_RECEIPT_KEY);
+      } catch (statusError) {
+        console.error(statusError);
+      }
     } catch (err) {
       console.error(err);
       setError(translateAppError(err, t, 'requestFailed'));
@@ -210,6 +282,8 @@ export function Login() {
         password: activationForm.password,
       });
       setActivationForm({ username: '', code: '', password: '', confirmPassword: '' });
+      sessionStorage.removeItem(ACCESS_REQUEST_RECEIPT_KEY);
+      setRequestTracking(null);
       setMode('login');
       setStep('start');
       setSuccess(t('activationSuccess'));
@@ -384,7 +458,26 @@ export function Login() {
             </form>
           )}
 
-          {mode === 'request' && (
+          {mode === 'request' && requestTracking && (
+            <section className="request-access-form login-step-enter" aria-live="polite">
+              <p className="viewer-access-hint">
+                {requestTracking.status === 'APROVADO'
+                  ? t('accessRequestTrackingApproved')
+                  : requestTracking.status === 'REPROVADO'
+                    ? t('accessRequestTrackingRejected')
+                    : t('accessRequestTrackingPending')}
+              </p>
+              {requestTracking.rejectionReason && <p className="form-error">{requestTracking.rejectionReason}</p>}
+              <div className="login-links">
+                {requestTracking.status === 'REPROVADO' && (
+                  <button type="button" className="login-link-button" onClick={restartAccessRequest}>{t('newAccessRequest')}</button>
+                )}
+                <button type="button" className="login-link-button" onClick={backToLogin}>{t('backToLogin')}</button>
+              </div>
+            </section>
+          )}
+
+          {mode === 'request' && !requestTracking && (
             <form onSubmit={submitAccessRequest} className="request-access-form login-step-enter">
               {error && <p className="form-error">{error}</p>}
               {success && <p className="form-success">{success}</p>}

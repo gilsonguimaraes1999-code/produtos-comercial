@@ -30,6 +30,7 @@ export interface CityRow {
   position: number;
   created_at?: string;
   updated_at?: string;
+  version?: number | string;
 }
 
 export interface CategoryRow {
@@ -39,6 +40,7 @@ export interface CategoryRow {
   position: number;
   created_at?: string;
   updated_at?: string;
+  version?: number | string;
   category_translations?: CategoryTranslationRow[] | null;
 }
 
@@ -54,6 +56,7 @@ export interface ProductRow {
   position: number;
   created_at?: string;
   updated_at?: string;
+  version?: number | string;
   product_translations?: ProductTranslationRow[] | null;
   product_prices?: Array<{ currency: CurrencyCode; amount: string | number }> | null;
   product_media?: Array<{
@@ -87,6 +90,7 @@ export function mapCityRow(row: CityRow): City {
     id: row.id,
     name: row.name,
     order: row.position,
+    version: Number(row.version || 1),
     ...(row.created_at ? { createdAt: row.created_at } : {}),
     ...(row.updated_at ? { updatedAt: row.updated_at } : {}),
   };
@@ -102,6 +106,7 @@ export function mapCategoryRow(row: CategoryRow, language: ContentLanguage): Cat
     translations: translationMap(translations, (translation) => translation.title),
     icon: row.icon || "Box",
     order: row.position,
+    version: Number(row.version || 1),
     ...(row.created_at ? { createdAt: row.created_at } : {}),
     ...(row.updated_at ? { updatedAt: row.updated_at } : {}),
   };
@@ -152,6 +157,7 @@ export function mapProductRow(
     currency,
     prices,
     order: row.position,
+    version: Number(row.version || 1),
     images,
     ...(row.created_at ? { createdAt: row.created_at } : {}),
     ...(row.updated_at ? { updatedAt: row.updated_at } : {}),
@@ -166,6 +172,7 @@ export function mapDescriptionTemplateRow(row: {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+  version?: number | string;
   description_template_translations?: Array<{ language: ContentLanguage; html: string }> | null;
 }): DescriptionTemplate {
   const translations = Object.fromEntries(
@@ -177,6 +184,7 @@ export function mapDescriptionTemplateRow(row: {
     title: row.name,
     order: row.position,
     active: row.is_active,
+    version: Number(row.version || 1),
     htmlBR: translations.pt || "",
     htmlEN: translations.en || "",
     htmlES: translations.es || "",

@@ -1,17 +1,20 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Search } from 'lucide-react';
 import { translateAppError, translateIconName, useTranslation } from '../../i18n';
+import { CatalogConflictError } from '../supabase/catalogMutations';
+import { getCatalogEntityRepository } from '../supabase/catalogEntityRepository';
 import { GLOBAL_ICONS, CatalogIcon } from '../icons';
 import { contentLanguageFor, localizedCategoryTitle } from '../localization';
-import type { Category, CategoryPayload } from '../types';
+import type { Category, CategoryPayload, MutationResult } from '../types';
 import type { City } from '../types';
 import { CitySelect } from './CitySelect';
+import { EditConflictDialog } from './EditConflictDialog';
 
 export function CategoryForm({ category, cities, defaultCityId, onSave, onCancel }: {
   category?: Category | undefined;
   cities: City[];
   defaultCityId?: string | undefined;
-  onSave: (data: CategoryPayload) => Promise<void>;
+  onSave: (data: CategoryPayload) => Promise<MutationResult | void>;
   onCancel: () => void;
 }) {
   const { language, t } = useTranslation();
@@ -21,6 +24,8 @@ export function CategoryForm({ category, cities, defaultCityId, onSave, onCancel
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [openedVersion, setOpenedVersion] = useState(category?.version);
+  const [conflictDraft, setConflictDraft] = useState<CategoryPayload | null>(null);
 
   const icons = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -41,18 +46,40 @@ export function CategoryForm({ category, cities, defaultCityId, onSave, onCancel
     }
     setSaving(true);
     setError('');
+    const draft: CategoryPayload = { id: category?.id, version: openedVersion, cityId, title: title.trim(), icon, sourceLanguage: contentLanguageFor(language) };
     try {
-      await onSave({ id: category?.id, cityId, title: title.trim(), icon, sourceLanguage: contentLanguageFor(language) });
+      await onSave(draft);
     } catch (err) {
       console.error(err);
-      setError(translateAppError(err, t, 'categorySaveError'));
+      if (err instanceof CatalogConflictError) setConflictDraft(draft);
+      else setError(translateAppError(err, t, 'categorySaveError'));
       setSaving(false);
     }
+  }
+
+  async function reloadLatestCategory() {
+    if (!category?.id) return;
+    const latest = await getCatalogEntityRepository().fetchCategory(category.id, contentLanguageFor(language));
+    if (!latest) throw new Error('CATEGORY_NOT_FOUND');
+    setCityId(latest.cityId);
+    setTitle(localizedCategoryTitle(latest, language));
+    setIcon(latest.icon);
+    setOpenedVersion(latest.version);
+    setConflictDraft(null);
+    setError('');
   }
 
   return (
     <form onSubmit={submit} className="stack-form">
       {error && <p className="form-error normal-case">{error}</p>}
+      {conflictDraft && (
+        <EditConflictDialog
+          entityName={conflictDraft.title}
+          onReload={reloadLatestCategory}
+          onCopy={() => navigator.clipboard.writeText(JSON.stringify(conflictDraft, null, 2))}
+          onCancel={() => setConflictDraft(null)}
+        />
+      )}
       <div className="field-label">
         {t('city')}
         <CitySelect cities={cities} value={cityId} onChange={setCityId} />

@@ -1,8 +1,11 @@
 import { FileText, Plus, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { translateAppError, useTranslation } from '../../i18n';
-import type { Category, DescriptionTemplate, DescriptionTemplatePayload } from '../types';
+import { CatalogConflictError } from '../supabase/catalogMutations';
+import { getCatalogEntityRepository } from '../supabase/catalogEntityRepository';
+import type { Category, DescriptionTemplate, DescriptionTemplatePayload, MutationResult } from '../types';
 import { CategorySelect } from './CategorySelect';
+import { EditConflictDialog } from './EditConflictDialog';
 import { RichHtmlEditor } from './RichHtmlEditor';
 import { Toast, type ToastState } from './Toast';
 
@@ -24,7 +27,7 @@ export function DescriptionTemplatesPage({
 }: {
   categories: Category[];
   templates: DescriptionTemplate[];
-  onSave: (template: DescriptionTemplatePayload) => Promise<void>;
+  onSave: (template: DescriptionTemplatePayload) => Promise<MutationResult>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -34,6 +37,7 @@ export function DescriptionTemplatesPage({
   const [editorLanguage, setEditorLanguage] = useState<'pt' | 'en' | 'es'>('pt');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [conflictDraft, setConflictDraft] = useState<DescriptionTemplatePayload | null>(null);
 
   const categoryTemplates = useMemo(
     () => templates
@@ -52,6 +56,7 @@ export function DescriptionTemplatesPage({
     setEditingId(template.id);
     setEditing({
       id: template.id,
+      version: template.version,
       categoryId: template.categoryId,
       title: template.title,
       order: template.order,
@@ -73,14 +78,38 @@ export function DescriptionTemplatesPage({
   async function save() {
     if (!editing.categoryId || !editing.title.trim()) return;
     setSaving(true);
+    const draft = { ...editing, id: editingId, title: editing.title.trim(), categoryId: selectedCategoryId };
     try {
-      await onSave({ ...editing, id: editingId, title: editing.title.trim(), categoryId: selectedCategoryId });
+      const result = await onSave(draft);
+      setEditingId(result.id);
+      setEditing((current) => ({ ...current, id: result.id, version: result.version }));
       setToast({ kind: 'success', message: t('templateSaved') });
     } catch (error) {
-      setToast({ kind: 'error', message: translateAppError(error, t, 'genericActionError') });
+      if (error instanceof CatalogConflictError) setConflictDraft(draft);
+      else setToast({ kind: 'error', message: translateAppError(error, t, 'genericActionError') });
     } finally {
       setSaving(false);
     }
+  }
+
+  async function reloadLatestTemplate() {
+    if (!editingId) return;
+    const latest = await getCatalogEntityRepository().fetchDescriptionTemplate(editingId);
+    if (!latest) throw new Error('TEMPLATE_NOT_FOUND');
+    setEditing({
+      id: latest.id,
+      version: latest.version,
+      categoryId: latest.categoryId,
+      title: latest.title,
+      order: latest.order,
+      active: latest.active,
+      htmlBR: latest.htmlBR,
+      htmlEN: latest.htmlEN,
+      htmlES: latest.htmlES,
+    });
+    setSelectedCategoryId(latest.categoryId);
+    setConflictDraft(null);
+    setToast(null);
   }
 
   async function remove(template: DescriptionTemplate) {
@@ -101,6 +130,14 @@ export function DescriptionTemplatesPage({
   return (
     <section className="description-templates-page">
       {toast && <Toast toast={toast} onDismiss={() => setToast(null)} />}
+      {conflictDraft && (
+        <EditConflictDialog
+          entityName={conflictDraft.title}
+          onReload={reloadLatestTemplate}
+          onCopy={() => navigator.clipboard.writeText(JSON.stringify(conflictDraft, null, 2))}
+          onCancel={() => setConflictDraft(null)}
+        />
+      )}
       <div className="template-page-head">
         <span><FileText size={20} /></span>
         <div>

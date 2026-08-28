@@ -12,6 +12,7 @@ import type {
 import {
   mapCategoryRow,
   mapCityRow,
+  mapDescriptionTemplateRow,
   mapProductRow,
   type CategoryRow,
   type CityRow,
@@ -47,12 +48,12 @@ export function createCatalogRepository(client: SupabaseClient) {
       const [citiesResult, categoriesResult] = await Promise.all([
         client
           .from("cities")
-          .select("id, name, position, created_at, updated_at")
+          .select("id, name, position, version, created_at, updated_at")
           .order("position", { ascending: true })
           .order("id", { ascending: true }),
         client
           .from("categories")
-          .select("id, city_id, icon, position, created_at, updated_at, category_translations(language, title, is_source)")
+          .select("id, city_id, icon, position, version, created_at, updated_at, category_translations(language, title, is_source)")
           .order("position", { ascending: true })
           .order("id", { ascending: true }),
       ]);
@@ -71,7 +72,7 @@ export function createCatalogRepository(client: SupabaseClient) {
         .from("products")
         .select(`
           id, category_id, coordinates, storage_weight, import_key,
-          sold, buyer_name, buyer_discord_id, position, created_at, updated_at,
+          sold, buyer_name, buyer_discord_id, position, version, created_at, updated_at,
           product_translations(language, name, description_html, is_source),
           product_prices(currency, amount),
           product_media(id, media_type, storage_path, public_url, thumbnail_path, thumbnail_url, video_provider, position)
@@ -107,23 +108,11 @@ export function createCatalogRepository(client: SupabaseClient) {
     async fetchDescriptionTemplates(): Promise<DescriptionTemplate[]> {
       const result = await client
         .from("description_templates")
-        .select("id, category_id, name, position, is_active, created_at, updated_at, description_template_translations(language, html)")
+        .select("id, category_id, name, position, is_active, version, created_at, updated_at, description_template_translations(language, html)")
         .order("position", { ascending: true })
         .order("id", { ascending: true });
       const rows = assertQuery(result) as Array<Record<string, unknown>>;
-      return rows.map((row) => {
-        const translations = Array.isArray(row.description_template_translations)
-          ? row.description_template_translations as Array<{ language: string; html: string }>
-          : [];
-        const html = (language: string) => translations.find((item) => item.language === language)?.html || "";
-        return {
-          id: String(row.id), categoryId: String(row.category_id), title: String(row.name),
-          order: Number(row.position), active: row.is_active === true,
-          htmlBR: html("pt"), htmlEN: html("en"), htmlES: html("es"),
-          createdAt: typeof row.created_at === "string" ? row.created_at : undefined,
-          updatedAt: typeof row.updated_at === "string" ? row.updated_at : undefined,
-        };
-      });
+      return rows.map((row) => mapDescriptionTemplateRow(row as never));
     },
   };
 }
