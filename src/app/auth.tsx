@@ -31,6 +31,19 @@ function readViewerSession(): SessionData | null {
   }
 }
 
+function isViewerSession(session: SessionData | null): boolean {
+  return session?.token.startsWith('viewer:') === true;
+}
+
+function persistViewerSession(session: SessionData): void {
+  const { catalog: _catalog, ...lightweightSession } = session;
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(lightweightSession));
+  } catch {
+    // O modo visualizador continua válido nesta aba mesmo se o navegador bloquear storage.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,7 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void repository.getCurrentSessionData()
       .then((next) => {
-        if (active) setSession(next);
+        if (active) {
+          setSession((current) => isViewerSession(current) ? current : next);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -58,14 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: authListener } = client.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        setSession(null);
+        setSession((current) => isViewerSession(current) ? current : null);
         return;
       }
       if (event !== 'SIGNED_IN' && event !== 'TOKEN_REFRESHED' && event !== 'USER_UPDATED') return;
 
       window.setTimeout(() => {
         void repository.getCurrentSessionData().then((next) => {
-          if (active) setSession(next);
+          if (active) {
+            setSession((current) => isViewerSession(current) ? current : next);
+          }
         });
       }, 0);
     });
@@ -84,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     activationEnabled: true,
     async login(username, password) {
       const next = await getAuthRepository().login(username, password);
+      localStorage.removeItem(SESSION_KEY);
       setSession(next);
     },
     async activateAccount(input) {
@@ -120,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         catalog: visibleCatalog,
       };
       setSession(next);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      persistViewerSession(next);
     },
     async logout() {
       const token = session?.token;
@@ -139,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const next = { ...session, user };
       setSession(next);
       if (session.token.startsWith('viewer:')) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+        persistViewerSession(next);
       }
     },
   }), [loading, session]);
