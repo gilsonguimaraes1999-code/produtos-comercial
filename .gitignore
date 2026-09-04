@@ -4,6 +4,7 @@ node_modules.legacy-*/
 dist/
 .output/
 .tanstack/
+.worktrees/
 supabase/.temp/
 .env
 .env.*
