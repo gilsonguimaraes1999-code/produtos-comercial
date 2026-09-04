@@ -27,24 +27,6 @@ interface ProfileRow {
 
 type ProductPermissionRow = Record<string, boolean | string>;
 
-async function getFunctionError(error: unknown): Promise<Error & { code?: string }> {
-  const context = typeof error === "object" && error !== null && "context" in error
-    ? (error as { context?: unknown }).context
-    : null;
-  let code = "ACTIVATION_FAILED";
-
-  if (context instanceof Response) {
-    try {
-      const payload = (await context.clone().json()) as { error?: unknown };
-      if (typeof payload.error === "string" && payload.error) code = payload.error;
-    } catch {
-      // A resposta sem JSON recebe o código estável genérico.
-    }
-  }
-
-  return Object.assign(new Error(code), { code });
-}
-
 const productPermissionColumns: Record<ProductPermission, string> = {
   createProduct: "create_product",
   editProductCategory: "edit_product_category",
@@ -162,24 +144,6 @@ export function createAuthRepository(
       if (result.error || !session?.user) return null;
       const user = await userLoader(client, session.user.id);
       return { token: session.access_token, user };
-    },
-
-    async activate(input: {
-      username: string;
-      code: string;
-      password: string;
-    }): Promise<void> {
-      const result = await client.functions.invoke("activate-user", {
-        body: {
-          username: normalizeUsername(input.username),
-          code: input.code.trim().toUpperCase(),
-          password: input.password,
-        },
-      });
-      if (result.error) throw await getFunctionError(result.error);
-      if (result.data?.error) {
-        throw Object.assign(new Error(result.data.error), { code: result.data.error });
-      }
     },
 
     async logout(): Promise<void> {

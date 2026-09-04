@@ -200,6 +200,8 @@ input, select { color-scheme: dark; }
 .login-form { width: 100%; }
 .form-error { margin: 0 0 12px; border: 1px solid rgba(239,68,68,.22); border-radius: 12px; background: rgba(239,68,68,.1); padding: 11px 14px; color: #ff7878; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .form-error.normal-case { font-size: 12px; letter-spacing: 0; text-transform: none; }
+.catalog-sync-error { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 18px; }
+.catalog-sync-error .secondary-button { flex: 0 0 auto; min-height: 36px; padding: 8px 14px; }
 .login-input-shell { display: flex; align-items: center; gap: 9px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: rgba(255,255,255,.05); backdrop-filter: blur(14px) saturate(140%); padding: 8px 8px 8px 16px; color: var(--gold); box-shadow: 0 8px 32px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1); transition: .2s; }
 .login-input-shell:focus-within { border-color: rgba(212,175,55,.55); box-shadow: 0 10px 36px rgba(0,0,0,.5), 0 0 22px rgba(212,175,55,.16), inset 0 1px 0 rgba(255,255,255,.14); }
 .login-input-shell input { min-width:0; flex:1; border:0; outline:0; background:transparent; padding: 10px 7px; color:#fff; font-size:14px; }

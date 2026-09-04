@@ -1,12 +1,13 @@
 import { ArrowLeft, ArrowUpDown, Building2, Check, Clock, Eye, Pencil, Plus, Search, ShieldCheck, Trash2, UserRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { translateAppError, useTranslation } from '../../i18n';
-import { accessRequestsApi, usersApi } from '../api';
+import { usersApi } from '../api';
 import { useAuth } from '../auth';
+import { useAccessRequests } from '../hooks/useAccessRequests';
 import { normalizeUserPermissions, PRODUCT_PERMISSIONS } from '../permissions';
 import type { AccessRequest, AuthUser, City, ProductPermission, UserPayload, UserRole } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
-import { AccessRequestsPage } from './AccessRequestsModal';
+import { AccessRequestsContent } from './AccessRequestsModal';
 import { Modal } from './Modal';
 import { RoleSelect } from './RoleSelect';
 import { UserFilterDatePicker, UserFilterSelect } from './UserFilterControls';
@@ -46,14 +47,14 @@ const productPermissionLabels: Record<ProductPermission, string> = {
 
 export function UserManagement({ cities, onClose }: { cities: City[]; onClose: () => void }) {
   const { t, locale } = useTranslation();
-  const { token, user: currentUser, replaceUser, activationEnabled } = useAuth();
+  const { token, user: currentUser, replaceUser } = useAuth();
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [editing, setEditing] = useState<UserPayload | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [requests, setRequests] = useState<AccessRequest[]>([]);
+  const accessRequests = useAccessRequests();
   const [requestBusy, setRequestBusy] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historyDetail, setHistoryDetail] = useState<AccessRequest | null>(null);
@@ -72,19 +73,14 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
   useEffect(() => {
     let active = true;
 
-    Promise.all([usersApi.list(token), accessRequestsApi.list(token)])
-      .then(([usersResult, requestsResult]) => {
+    usersApi.list(token)
+      .then((usersResult) => {
         if (!active) return;
         setUsers(usersResult.users);
-        setRequests(requestsResult.requests);
-        setRequestCitySelections(Object.fromEntries(requestsResult.requests.map((request) => [
-          request.id,
-          cities.filter((city) => (request.requestedCityNames?.length ? request.requestedCityNames : [request.cityName]).includes(city.name)).map((city) => city.id),
-        ])));
       })
       .catch((err) => {
         console.error(err);
-        setError(translateAppError(err, t, 'deleteUserError'));
+        setError(translateAppError(err, t, 'loadUsersError'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -96,25 +92,20 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
   }, [cities, token, t]);
 
   useEffect(() => {
-    if (showRequests) return;
-    let active = true;
-    const refreshPendingRequests = () => {
-      accessRequestsApi.list(token).then((result) => {
-        if (active) setRequests(result.requests);
-      }).catch((err) => console.error(err));
-    };
-    const interval = window.setInterval(refreshPendingRequests, 4000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [showRequests, token]);
+    setRequestCitySelections((current) => ({
+      ...Object.fromEntries(accessRequests.requests.map((request) => [
+        request.id,
+        cities.filter((city) => (request.requestedCityNames?.length ? request.requestedCityNames : [request.cityName]).includes(city.name)).map((city) => city.id),
+      ])),
+      ...current,
+    }));
+  }, [accessRequests.requests, cities]);
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!editing) return;
     if (!editing.name.trim() || !editing.username.trim()) return setError(t('fillNameUser'));
-    if (!activationEnabled && !editing.id && !editing.password) return setError(t('definePassword'));
+    if (!editing.id && (!editing.password || editing.password.length < 8)) return setError(t('definePassword'));
     setSaving(true);
     setError('');
     try {
@@ -139,9 +130,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
     setError('');
     try {
       const result = await usersApi.remove(token, target.id);
-      const requestsResult = await accessRequestsApi.list(token);
       setUsers(result.users);
-      setRequests(requestsResult.requests);
       setPendingRemoval(null);
     } catch (err) {
       console.error(err);
@@ -154,15 +143,10 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
     setRequestBusy(item.id);
     setError('');
     try {
-      const result = await accessRequestsApi.approve(
-        token,
-        item.id,
-        'COMERCIAL',
-        normalizeUserPermissions(undefined),
-        requestCitySelections[item.id] || [],
-      );
-      setUsers(result.users);
-      setRequests(result.requests);
+      const result = await accessRequests.approve(item.id, requestCitySelections[item.id] || []);
+      if (result.user) setUsers((current) => current.some((user) => user.id === result.user?.id)
+        ? current.map((user) => user.id === result.user?.id ? result.user! : user)
+        : [...current, result.user!]);
     } catch (err) {
       console.error(err);
       setError(translateAppError(err, t, 'saveUserError'));
@@ -204,8 +188,8 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
     });
   }
 
-  const pendingRequests = requests.filter((item) => item.status === 'PENDENTE');
-  const historyRequests = requests.filter((item) => item.status !== 'PENDENTE');
+  const pendingRequests = accessRequests.requests.filter((item) => item.status === 'PENDENTE');
+  const historyRequests = accessRequests.requests.filter((item) => item.status !== 'PENDENTE');
   const visibleUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR');
     return users
@@ -250,7 +234,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
   }
 
   if (showRequests) {
-    return <AccessRequestsPage cities={cities} onClose={() => setShowRequests(false)} onUsersChanged={setUsers} onRequestsChanged={setRequests} />;
+    return <AccessRequestsContent cities={cities} onClose={() => setShowRequests(false)} controller={accessRequests} onUsersChanged={(nextUser) => setUsers((current) => current.some((item) => item.id === nextUser.id) ? current.map((item) => item.id === nextUser.id ? nextUser : item) : [...current, nextUser])} />;
   }
 
   return (
@@ -316,7 +300,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
             <label className="field-label">{t('username')}<input value={editing.username} onChange={(e) => setEditing({ ...editing, username: e.target.value })} /></label>
           </div>
           <div className="two-columns">
-            <label className="field-label">{t('password')}<input type="password" value={editing.password || ''} onChange={(e) => setEditing({ ...editing, password: e.target.value })} placeholder={editing.id ? t('leaveEmptyPassword') : t('requiredPassword')} /></label>
+            <label className="field-label">{t('password')}<input type="password" required={!editing.id} minLength={editing.id ? undefined : 8} autoComplete="new-password" value={editing.password || ''} onChange={(e) => setEditing({ ...editing, password: e.target.value })} placeholder={editing.id ? t('leaveEmptyPassword') : t('requiredPassword')} /></label>
             <div className="field-label">{t('role')}<RoleSelect value={editing.role} onChange={(role) => setEditing({ ...editing, role })} /></div>
           </div>
           <div className="permission-editor">

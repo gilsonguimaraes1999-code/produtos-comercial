@@ -1,0 +1,16 @@
+node_modules/
+node_modules.legacy-*/
+.vercel/
+dist/
+.output/
+.tanstack/
+.worktrees/
+.tmp-function-*/
+supabase/.temp/
+.env
+.env.*
+!.env.example
+work/migration/*.json
+work/migration/*.csv
+work/migration/*.log
+!work/migration/.gitkeep

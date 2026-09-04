@@ -71,3 +71,22 @@ O importador é idempotente e preserva IDs, ordem, preços por cidade, traduçõ
 3. Valide login, Visualizador, edição, Storage e Realtime.
 
 Não reescreva o histórico publicado. Faça um commit normal com inclusões, alterações e exclusões para preservar a integração com o Lovable.
+
+## Concorrência e Realtime do catálogo
+
+- Cidades, categorias, produtos e modelos de descrição transportam uma versão monotônica.
+- Edições usam concorrência otimista no PostgreSQL. Uma versão antiga recebe `EDIT_CONFLICT` sem sobrescrever a versão mais recente.
+- Reordenações com uma lista antiga recebem `ORDER_CONFLICT`; o bloqueio transacional fica restrito à lista afetada.
+- Eventos de preço, tradução e mídia são agrupados por entidade durante 100 ms e provocam uma única leitura granular.
+- O snapshot completo é reservado para inicialização, mudança de idioma e recuperação de desconexão/inconsistência.
+- Em conflito, o formulário mantém o rascunho e permite carregar a versão recente, copiar as alterações ou continuar editando.
+
+### Implantação aditiva
+
+1. Aplicar `202608270015_access_request_tracking.sql` e depois `202608270016_catalog_concurrency.sql`.
+2. Publicar as Edge Functions compatíveis com os contratos antigos e novos.
+3. Publicar o frontend com RPCs v2 e sincronização granular.
+4. Monitorar `EDIT_CONFLICT`, `ORDER_CONFLICT`, falhas de canal e latência Realtime.
+5. Remover caminhos legados de polling/recarga integral apenas depois da validação em produção.
+
+Rollback seguro: reverta somente o frontend para a versão anterior. Não remova as colunas `version`, triggers, RPCs v2 nem dados; a migração é aditiva e mantém os RPCs legados disponíveis durante a transição.

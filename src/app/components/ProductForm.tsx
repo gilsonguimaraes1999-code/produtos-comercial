@@ -4,10 +4,13 @@ import { translateAppError, useTranslation, type Translator } from '../../i18n';
 import { contentLanguageFor, localizedProductDescription, localizedProductName, normalizedPrices } from '../localization';
 import { knownMansionCoordinatesForProduct, knownMansionStorageForProduct, localizedMansionNameFromNumber, mansionNumberForProduct, normalizeMansionDescriptionCoordinates, type MansionLanguage } from '../mansionData';
 import { isVideoMedia, mediaThumbUrl, normalizeMediaLink, videoProviderName } from '../media';
-import type { Category, City, CurrencyCode, DescriptionTemplate, DraftImageInput, Product, ProductPayload, ProductPermission } from '../types';
+import { CatalogConflictError } from '../supabase/catalogMutations';
+import { getCatalogEntityRepository } from '../supabase/catalogEntityRepository';
+import type { Category, City, CurrencyCode, DescriptionTemplate, DraftImageInput, MutationResult, Product, ProductPayload, ProductPermission } from '../types';
 import { CategorySelect } from './CategorySelect';
 import { CitySelect } from './CitySelect';
 import { CURRENCIES, CurrencySelect } from './CurrencySelect';
+import { EditConflictDialog } from './EditConflictDialog';
 import { RichHtmlEditor } from './RichHtmlEditor';
 
 interface DraftImage {
@@ -308,7 +311,7 @@ export function ProductForm({ product, cities, categories, descriptionTemplates 
   descriptionTemplates?: DescriptionTemplate[];
   defaultCategoryId?: string | undefined;
   permissions?: Partial<Record<ProductPermission, boolean>>;
-  onSave: (payload: ProductPayload) => Promise<void>;
+  onSave: (payload: ProductPayload) => Promise<MutationResult | void>;
   onCancel: () => void;
 }) {
   const { language, locale, t } = useTranslation();
@@ -338,6 +341,8 @@ export function ProductForm({ product, cities, categories, descriptionTemplates 
   const [saving, setSaving] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [conflictDraft, setConflictDraft] = useState<ProductPayload | null>(null);
+  const [openedVersion, setOpenedVersion] = useState(product?.version);
 
   const usedCurrencies = useMemo(() => priceRows.map((row) => row.currency), [priceRows]);
   const selectedCategoryValid = cityCategories.some((category) => category.id === categoryId);
@@ -501,40 +506,76 @@ export function ProductForm({ product, cities, categories, descriptionTemplates 
     const payloadStorageWeight = canEditDescription ? mansionStorageValue : product?.storageWeight || mansionStorageValue;
     const payloadSourceLanguage = canEditName || canEditDescription ? contentLanguageFor(language) : 'pt';
 
+    const draft: ProductPayload = {
+      id: product?.id,
+      version: openedVersion,
+      categoryId: payloadCategoryId,
+      coordinates: payloadCoordinates,
+      storageWeight: payloadStorageWeight,
+      name: payloadName,
+      descriptionHtml: payloadDescriptionHtml,
+      ...(payloadDescriptionTranslations ? { descriptionTranslations: payloadDescriptionTranslations } : {}),
+      sourceLanguage: payloadSourceLanguage,
+      autoTranslate: !product && canEditName,
+      autoTranslateDescription: canEditDescription,
+      syncNameAcrossLanguages: false,
+      prices: payloadPrices,
+      amount: payloadPrimaryAmount,
+      currency: payloadPrimaryCurrency,
+      images: payloadImages,
+      ...(product?.order === undefined ? {} : { order: product.order }),
+      sold: canMarkSold ? sold : product?.sold === true,
+      soldOwnerName: canMarkSold && sold ? soldOwnerName.trim() : product?.soldOwnerName || '',
+      soldOwnerDiscordId: canMarkSold && sold ? soldOwnerDiscordId.trim() : product?.soldOwnerDiscordId || '',
+    };
+
     setSaving(true);
     setError('');
     try {
-      await onSave({
-        id: product?.id,
-        categoryId: payloadCategoryId,
-        coordinates: payloadCoordinates,
-        storageWeight: payloadStorageWeight,
-        name: payloadName,
-        descriptionHtml: payloadDescriptionHtml,
-        ...(payloadDescriptionTranslations ? { descriptionTranslations: payloadDescriptionTranslations } : {}),
-        sourceLanguage: payloadSourceLanguage,
-        autoTranslate: !product && canEditName,
-        autoTranslateDescription: canEditDescription,
-        syncNameAcrossLanguages: false,
-        prices: payloadPrices,
-        amount: payloadPrimaryAmount,
-        currency: payloadPrimaryCurrency,
-        images: payloadImages,
-        order: product?.order,
-        sold: canMarkSold ? sold : product?.sold === true,
-        soldOwnerName: canMarkSold && sold ? soldOwnerName.trim() : product?.soldOwnerName || '',
-        soldOwnerDiscordId: canMarkSold && sold ? soldOwnerDiscordId.trim() : product?.soldOwnerDiscordId || '',
-      });
+      await onSave(draft);
     } catch (err) {
       console.error(err);
-      setError(translateAppError(err, t, 'productSaveError'));
+      if (err instanceof CatalogConflictError) setConflictDraft(draft);
+      else setError(translateAppError(err, t, 'productSaveError'));
       setSaving(false);
     }
+  }
+
+  async function reloadLatestProduct() {
+    if (!product?.id) return;
+    const latest = await getCatalogEntityRepository().fetchProduct(product.id, contentLanguageFor(language), product.currency || 'BRL');
+    if (!latest) throw new Error('PRODUCT_NOT_FOUND');
+    const latestCategory = categories.find((category) => category.id === latest.categoryId);
+    setCityId(latestCategory?.cityId || cityId);
+    setCategoryId(latest.categoryId);
+    setName(localizedProductName(latest, language));
+    setDescriptionHtml(localizedProductDescription(latest, language));
+    setSold(latest.sold === true);
+    setSoldOwnerName(latest.soldOwnerName || '');
+    setSoldOwnerDiscordId(latest.soldOwnerDiscordId || '');
+    setPriceRows(initialPriceRows(latest));
+    setOpenedVersion(latest.version);
+    setImages((latest.images || []).map((image) => ({
+      key: image.id,
+      preview: mediaThumbUrl(image) || image.url,
+      label: isVideoMedia(image) ? t('currentVideo') : t('currentImage'),
+      input: { id: image.id, url: image.url, mediaType: image.mediaType || 'image', videoProvider: image.videoProvider, thumbnailUrl: image.thumbnailUrl },
+    })));
+    setConflictDraft(null);
+    setError('');
   }
 
   return (
     <form onSubmit={submit} className="stack-form">
       {error && <p className="form-error normal-case">{error}</p>}
+      {conflictDraft && (
+        <EditConflictDialog
+          entityName={product?.name || t('product')}
+          onReload={reloadLatestProduct}
+          onCopy={() => navigator.clipboard.writeText(JSON.stringify(conflictDraft, null, 2))}
+          onCancel={() => setConflictDraft(null)}
+        />
+      )}
       {showCategoryFields && (
       <div className="two-columns">
         <div className="field-label">

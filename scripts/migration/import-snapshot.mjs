@@ -1,5 +1,5 @@
 import { randomBytes, createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
@@ -52,18 +52,12 @@ function permissionRows(profile) {
   };
 }
 
-function activationCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = randomBytes(10);
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
-}
-
 export async function importSnapshot(client, input, idempotencyKey) {
   const snapshot = input.schemaVersion ? input : normalizeSnapshot(input);
   const existingRun = await client.from("migration_runs").select("id, status").eq("idempotency_key", idempotencyKey).maybeSingle();
   if (existingRun.error) throw existingRun.error;
   if (existingRun.data?.status === "completed") {
-    return { migrationRunId: existingRun.data.id, alreadyCompleted: true, activationCodes: [] };
+    return { migrationRunId: existingRun.data.id, alreadyCompleted: true };
   }
   const runResult = await client.from("migration_runs").upsert({
     ...(existingRun.data?.id ? { id: existingRun.data.id } : {}),
@@ -123,20 +117,24 @@ export async function importSnapshot(client, input, idempotencyKey) {
     const listedUsers = await client.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listedUsers.error) throw listedUsers.error;
     const authUsers = new Map(listedUsers.data.users.map((user) => [user.email, user]));
-    const activationCodes = [];
+    const ownerPassword = requiredEnv("MIGRATION_OWNER_PASSWORD");
     for (const profile of snapshot.profiles) {
       const email = technicalEmail(profile.username);
+      const password = profile.role === "owner" ? ownerPassword : randomBytes(32).toString("base64url");
       let authUser = authUsers.get(email);
       if (!authUser) {
         const created = await client.auth.admin.createUser({
           email,
-          password: randomBytes(32).toString("base64url"),
+          password,
           email_confirm: true,
           user_metadata: { username: profile.username },
         });
         if (created.error) throw created.error;
         authUser = created.data.user;
         authUsers.set(email, authUser);
+      } else if (profile.role === "owner") {
+        const updated = await client.auth.admin.updateUserById(authUser.id, { password });
+        if (updated.error) throw updated.error;
       }
       await upsertRows(client, "profiles", [{
         id: profile.id,
@@ -144,7 +142,7 @@ export async function importSnapshot(client, input, idempotencyKey) {
         username: profile.username,
         display_name: profile.displayName,
         role: profile.role,
-        status: "pending_activation",
+        status: profile.role === "owner" ? "active" : "disabled",
         ...(profile.createdAt ? { created_at: profile.createdAt } : {}),
         ...(profile.updatedAt ? { updated_at: profile.updatedAt } : {}),
       }], "id");
@@ -154,16 +152,6 @@ export async function importSnapshot(client, input, idempotencyKey) {
         manage_requests_for_assigned_cities: profile.permissions?.accessRequests?.manageAssignedCities === true,
       }], "profile_id");
 
-      const code = activationCode();
-      const hash = createHash("sha256").update(code).digest("hex");
-      await client.from("activation_codes").update({ consumed_at: new Date().toISOString() }).eq("profile_id", profile.id).is("consumed_at", null);
-      const codeResult = await client.from("activation_codes").insert({
-        profile_id: profile.id,
-        code_hash: hash,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      });
-      if (codeResult.error) throw codeResult.error;
-      activationCodes.push({ username: profile.username, code });
     }
     await upsertRows(client, "user_cities", snapshot.userCities.map((row) => ({
       profile_id: row.profileId, city_id: row.cityId,
@@ -186,7 +174,7 @@ export async function importSnapshot(client, input, idempotencyKey) {
       status: "completed", counts, finished_at: new Date().toISOString(),
     }).eq("id", migrationRunId);
     if (finish.error) throw finish.error;
-    return { migrationRunId, alreadyCompleted: false, activationCodes, counts };
+    return { migrationRunId, alreadyCompleted: false, counts };
   } catch (error) {
     await client.from("migration_runs").update({
       status: "failed",
@@ -207,7 +195,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
   const key = process.env.MIGRATION_IDEMPOTENCY_KEY || `snapshot:${createHash("sha256").update(JSON.stringify(normalized)).digest("hex")}`;
   const result = await importSnapshot(client, normalized, key);
-  const codePath = process.env.ACTIVATION_CODES_OUTPUT || "work/migration/activation-codes.private.json";
-  if (result.activationCodes.length) await writeFile(codePath, JSON.stringify(result.activationCodes, null, 2), { mode: 0o600 });
-  process.stdout.write(`${JSON.stringify({ ...result, activationCodes: result.activationCodes.length }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }

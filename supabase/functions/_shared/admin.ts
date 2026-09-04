@@ -33,8 +33,6 @@ export function normalizeUsername(username: string): string {
   return username.trim().toLocaleLowerCase("en-US");
 }
 
-const activationAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
 export function technicalEmailForUsername(username: string): string {
   const asciiLocalPart = encodeURIComponent(normalizeUsername(username))
     .replaceAll("%", "")
@@ -42,20 +40,4 @@ export function technicalEmailForUsername(username: string): string {
     .replace(/[^a-z0-9._-]/g, "");
   if (!asciiLocalPart) throw new Error("USERNAME_INVALID");
   return `${asciiLocalPart}@users.comercial-produtos.app`;
-}
-
-export function randomSecret(length = 32): string {
-  const random = new Uint32Array(length);
-  crypto.getRandomValues(random);
-  return Array.from(random, (value) => activationAlphabet[value % activationAlphabet.length]).join("");
-}
-
-export async function issueActivationCode(admin: ReturnType<typeof createAdminClient>, profileId: string, createdBy?: string | null) {
-  const code = randomSecret(10);
-  const codeHash = await sha256Hex(code);
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  await admin.from("activation_codes").update({ consumed_at: new Date().toISOString() }).eq("profile_id", profileId).is("consumed_at", null);
-  const inserted = await admin.from("activation_codes").insert({ profile_id: profileId, code_hash: codeHash, expires_at: expiresAt, created_by: createdBy || null });
-  if (inserted.error) throw inserted.error;
-  return { code, expiresAt };
 }

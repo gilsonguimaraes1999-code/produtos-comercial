@@ -12,9 +12,7 @@ interface AuthContextValue {
   token: string;
   loading: boolean;
   bootstrapCatalog: CatalogSnapshot | null;
-  activationEnabled: boolean;
   login: (username: string, password: string) => Promise<void>;
-  activateAccount: (input: { username: string; code: string; password: string }) => Promise<void>;
   loginAsViewer: (cityNames: string[] | string) => Promise<void>;
   logout: () => Promise<void>;
   replaceUser: (user: AuthUser) => void;
@@ -98,14 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     token: session?.token ?? '',
     loading,
     bootstrapCatalog: session?.catalog ?? null,
-    activationEnabled: true,
     async login(username, password) {
       const next = await getAuthRepository().login(username, password);
       localStorage.removeItem(SESSION_KEY);
       setSession(next);
-    },
-    async activateAccount(input) {
-      await getAuthRepository().activate(input);
     },
     async loginAsViewer(cityNames) {
       const requestedNames = Array.isArray(cityNames) ? cityNames : [cityNames];

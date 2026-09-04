@@ -1,4 +1,4 @@
-project_id = "kfhuzqohwtvcmybguvrs"
+project_id = "sfmuypkdagmpsfrobzwl"
 
 [api]
 enabled = true
@@ -8,9 +8,6 @@ major_version = 17
 
 [studio]
 enabled = true
-
-[functions.activate-user]
-verify_jwt = false
 
 [functions.request-access]
 verify_jwt = false

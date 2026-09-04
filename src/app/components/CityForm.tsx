@@ -1,33 +1,38 @@
 import { ArrowDown, ArrowUp, Building2, Pencil, Save, Trash2, Undo2 } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
 import { translateAppError, useTranslation } from '../../i18n';
-import type { Category, City, CityPayload, Product } from '../types';
+import { CatalogConflictError } from '../supabase/catalogMutations';
+import { getCatalogEntityRepository } from '../supabase/catalogEntityRepository';
+import { continueOrderDraft, type CatalogOrderDraft } from '../orderDraft';
+import type { Category, City, CityPayload, MutationResult, Product } from '../types';
+import { EditConflictDialog } from './EditConflictDialog';
 
 export function CityForm({ cities, categories, products, onSave, onDelete, onReorder, onCancel }: {
   cities: City[];
   categories: Category[];
   products: Product[];
-  onSave: (city: CityPayload) => Promise<void>;
+  onSave: (city: CityPayload) => Promise<MutationResult | void>;
   onDelete: (city: City) => void;
-  onReorder: (cityIds: string[]) => Promise<void>;
+  onReorder: (cityIds: string[], expectedOrder: string[]) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<CityPayload>({ name: '' });
   const [saving, setSaving] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [draftCityIds, setDraftCityIds] = useState<string[] | null>(null);
+  const [orderDraft, setOrderDraft] = useState<CatalogOrderDraft | null>(null);
   const [error, setError] = useState('');
+  const [conflictDraft, setConflictDraft] = useState<CityPayload | null>(null);
 
   const orderedCities = useMemo(() => {
-    if (!draftCityIds) return cities;
+    if (!orderDraft) return cities;
     const cityById = new Map(cities.map((city) => [city.id, city]));
-    const ordered = draftCityIds.map((id) => cityById.get(id)).filter((city): city is City => Boolean(city));
+    const ordered = orderDraft.requestedOrder.map((id) => cityById.get(id)).filter((city): city is City => Boolean(city));
     cities.forEach((city) => {
-      if (!draftCityIds.includes(city.id)) ordered.push(city);
+      if (!orderDraft.requestedOrder.includes(city.id)) ordered.push(city);
     });
     return ordered;
-  }, [cities, draftCityIds]);
+  }, [cities, orderDraft]);
 
   function moveCity(cityId: string, direction: -1 | 1) {
     const nextIds = orderedCities.map((city) => city.id);
@@ -37,18 +42,19 @@ export function CityForm({ cities, categories, products, onSave, onDelete, onReo
     const [movedCityId] = nextIds.splice(currentIndex, 1);
     if (!movedCityId) return;
     nextIds.splice(targetIndex, 0, movedCityId);
-    setDraftCityIds(nextIds);
+    const baseline = cities.slice().sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)).map((city) => city.id);
+    setOrderDraft((current) => continueOrderDraft(current, baseline, nextIds));
   }
 
   async function saveOrder() {
-    if (!draftCityIds) return;
+    if (!orderDraft) return;
     setSavingOrder(true);
     setError('');
     try {
-      await onReorder(orderedCities.map((city) => city.id));
-      setDraftCityIds(null);
+      await onReorder(orderDraft.requestedOrder, orderDraft.expectedOrder);
+      setOrderDraft(null);
     } catch (err) {
-      setError(translateAppError(err, t, 'genericActionError'));
+      setError(err instanceof CatalogConflictError ? t('orderConflictMessage') : translateAppError(err, t, 'genericActionError'));
     } finally {
       setSavingOrder(false);
     }
@@ -60,18 +66,37 @@ export function CityForm({ cities, categories, products, onSave, onDelete, onReo
     setSaving(true);
     setError('');
     try {
-      await onSave({ id: editing.id, name: editing.name.trim() });
+      const draft = { ...editing, name: editing.name.trim() };
+      await onSave(draft);
       setEditing({ name: '' });
     } catch (err) {
-      setError(translateAppError(err, t, 'citySaveError'));
+      if (err instanceof CatalogConflictError) setConflictDraft({ ...editing, name: editing.name.trim() });
+      else setError(translateAppError(err, t, 'citySaveError'));
     } finally {
       setSaving(false);
     }
   }
 
+  async function reloadLatestCity() {
+    if (!conflictDraft?.id) return;
+    const latest = await getCatalogEntityRepository().fetchCity(conflictDraft.id, 'pt');
+    if (!latest) throw new Error('CITY_NOT_FOUND');
+    setEditing({ id: latest.id, name: latest.name, version: latest.version });
+    setConflictDraft(null);
+    setError('');
+  }
+
   return (
     <div className="city-manager">
       {error && <p className="form-error normal-case">{error}</p>}
+      {conflictDraft && (
+        <EditConflictDialog
+          entityName={conflictDraft.name}
+          onReload={reloadLatestCity}
+          onCopy={() => navigator.clipboard.writeText(JSON.stringify(conflictDraft, null, 2))}
+          onCancel={() => setConflictDraft(null)}
+        />
+      )}
       <form onSubmit={submit} className="stack-form embedded-form">
         <label className="field-label">
           {editing.id ? t('editCity') : t('addCity')}
@@ -99,18 +124,18 @@ export function CityForm({ cities, categories, products, onSave, onDelete, onReo
                 <small>{t('cityStats', { categories: cityCategories.length, products: cityProducts.length })}</small>
               </div>
               <div className="row-actions">
-                <button type="button" onClick={() => setEditing({ id: city.id, name: city.name })} aria-label={t('editCity')} title={t('editCity')}><Pencil size={15} /></button>
+                <button type="button" onClick={() => setEditing({ id: city.id, name: city.name, version: city.version })} aria-label={t('editCity')} title={t('editCity')}><Pencil size={15} /></button>
                 <button type="button" onClick={() => onDelete(city)} aria-label={t('deleteCity')} title={t('deleteCity')}><Trash2 size={15} /></button>
               </div>
             </article>
           );
         })}
       </div>
-      {draftCityIds && (
+      {orderDraft && (
         <div className="city-order-save-bar" role="status">
           <strong>{t('pendingChanges')}</strong>
           <div className="form-actions">
-            <button type="button" className="secondary-button" onClick={() => setDraftCityIds(null)} disabled={savingOrder}><Undo2 size={16} /> Desfazer alterações</button>
+            <button type="button" className="secondary-button" onClick={() => setOrderDraft(null)} disabled={savingOrder}><Undo2 size={16} /> Desfazer alterações</button>
             <button type="button" className="primary-button" onClick={() => void saveOrder()} disabled={savingOrder}><Save size={16} /> {savingOrder ? t('savingChanges') : t('saveChanges')}</button>
           </div>
         </div>
