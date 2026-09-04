@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   saveProduct: vi.fn(),
   reorderCategories: vi.fn(),
   reorderProducts: vi.fn(),
+  refresh: vi.fn(),
+  catalogError: "",
   busyEntityIds: new Set<string>(),
   catalog: {
     revision: 1,
@@ -33,6 +35,8 @@ vi.mock("../catalog", () => ({
   useCatalog: () => ({
     catalog: mocks.catalog,
     loading: false,
+    error: mocks.catalogError,
+    refresh: mocks.refresh,
     busyEntityIds: mocks.busyEntityIds,
     saveCity: mocks.saveCity, deleteCity: vi.fn(), reorderCities: vi.fn(),
     saveCategory: mocks.saveCategory, deleteCategory: vi.fn(), reorderCategories: mocks.reorderCategories,
@@ -49,6 +53,8 @@ describe("CatalogApp definitive edit integration", () => {
     mocks.saveProduct.mockReset();
     mocks.reorderCategories.mockReset();
     mocks.reorderProducts.mockReset();
+    mocks.refresh.mockReset();
+    mocks.catalogError = "";
     mocks.busyEntityIds = new Set<string>();
     mocks.catalog.revision = 1;
     mocks.catalog.cities = [{ id: "city-1", name: "Cidade", order: 0, version: 1 }];
@@ -167,6 +173,16 @@ describe("CatalogApp definitive edit integration", () => {
     mocks.busyEntityIds = new Set(["cat-1"]);
     view.rerender(<LanguageProvider><CatalogApp /></LanguageProvider>);
     expect((await screen.findAllByRole("button", { name: /Mover para baixo|Move down/i }))[0]).toBeDisabled();
+  });
+
+  it("shows the catalog synchronization error and lets the user retry", async () => {
+    mocks.catalogError = "REQUEST_FAILED";
+    render(<LanguageProvider><CatalogApp /></LanguageProvider>);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Não foi possível sincronizar o catálogo|Could not synchronize the catalog/i);
+    fireEvent.click(screen.getByRole("button", { name: /Tentar novamente|Try again/i }));
+
+    expect(mocks.refresh).toHaveBeenCalledWith(true);
   });
 
   it("sends the first-movement product baseline even after live data changes", async () => {

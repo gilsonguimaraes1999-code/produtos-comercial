@@ -426,6 +426,8 @@ export function CatalogApp() {
   const {
     catalog,
     loading,
+    error: catalogError,
+    refresh,
     saveCity,
     deleteCity,
     reorderCities,
@@ -2065,6 +2067,15 @@ export function CatalogApp() {
               <CurrencySelect value={displayCurrency} onChange={changeDisplayCurrency} />
             </div>
           </div>
+
+          {catalogError && (
+            <div className="form-error normal-case catalog-sync-error" role="alert">
+              <span>{translateAppError(catalogError, t, 'syncError')}</span>
+              <button type="button" className="secondary-button" onClick={() => void refresh(true)}>
+                {t('tryAgain')}
+              </button>
+            </div>
+          )}
 
 
           {requestsOpen ? (
