@@ -3,23 +3,25 @@ import { describe, expect, it, vi } from "vitest";
 import { createAccessRequestsRepository } from "./accessRequestsRepository";
 
 describe("Supabase access requests repository", () => {
-  it("submits a hashed-server tracking secret contract and returns a browser-only receipt", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: "request-1", error: null });
-    const repository = createAccessRequestsRepository({ rpc } as never);
+  it("sends the password only to the secure request function and returns a browser-only receipt", async () => {
+    const invoke = vi.fn().mockResolvedValue({ data: { requestId: "request-1" }, error: null });
+    const repository = createAccessRequestsRepository({ functions: { invoke } } as never);
 
     const receipt = await repository.create({ name: " Ana ", username: " ANA ", password: "must-not-leave-browser", cityName: "Nobre", requestedCityNames: ["Nobre"] }, ["city-1"]);
 
     expect(receipt.requestId).toBe("request-1");
     expect(receipt.submissionKey).toMatch(/^[0-9a-f-]{36}$/i);
     expect(receipt.trackingSecret).toMatch(/^[0-9a-f]{64}$/);
-    expect(rpc).toHaveBeenCalledWith("submit_access_request_v2", {
-      request_display_name: "Ana",
-      request_username: "ANA",
-      requested_city_ids: ["city-1"],
-      tracking_secret: receipt.trackingSecret,
-      request_submission_key: receipt.submissionKey,
+    expect(invoke).toHaveBeenCalledWith("request-access", {
+      body: {
+        displayName: "Ana",
+        username: "ANA",
+        password: "must-not-leave-browser",
+        cityIds: ["city-1"],
+        trackingSecret: receipt.trackingSecret,
+        submissionKey: receipt.submissionKey,
+      },
     });
-    expect(JSON.stringify(rpc.mock.calls)).not.toContain("must-not-leave-browser");
   });
 
   it("queries only the request identified by its secret receipt", async () => {
@@ -32,7 +34,7 @@ describe("Supabase access requests repository", () => {
 
   it("reuses one review key for the action and returns changed records", async () => {
     const invoke = vi.fn()
-      .mockResolvedValueOnce({ data: { ok: true, request: { id: "request-1", status: "approved" }, user: { id: "user-1", status: "pending_activation" }, activation: { code: "ABC" } }, error: null })
+      .mockResolvedValueOnce({ data: { ok: true, request: { id: "request-1", status: "approved" }, user: { id: "user-1", status: "active" } }, error: null })
       .mockResolvedValueOnce({ data: { ok: true, request: { id: "request-2", status: "rejected" } }, error: null });
     const repository = createAccessRequestsRepository({ functions: { invoke } } as never);
     const approved = await repository.approve("request-1", ["city-1"], "review-1");
@@ -41,6 +43,7 @@ describe("Supabase access requests repository", () => {
     expect(invoke).toHaveBeenNthCalledWith(2, "review-access-request", { body: { requestId: "request-2", decision: "rejected", reason: "Dados inválidos", reviewKey: "review-2" } });
     expect(approved.request.status).toBe("APROVADO");
     expect(approved.user?.id).toBe("user-1");
+    expect(approved).not.toHaveProperty("activation");
     expect(rejected.request.status).toBe("REPROVADO");
   });
 

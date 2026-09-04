@@ -86,7 +86,6 @@ export interface AccessRequestTrackingStatus {
 export interface AccessRequestReviewResult {
   request: AccessRequest;
   user?: AuthUser;
-  activation?: unknown;
 }
 
 export interface SessionData {

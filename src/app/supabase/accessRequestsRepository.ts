@@ -106,15 +106,19 @@ export function createAccessRequestsRepository(client: SupabaseClient) {
         trackingSecret: createTrackingSecret(),
         submissionKey: crypto.randomUUID(),
       };
-      const result = await client.rpc('submit_access_request_v2', {
-        request_display_name: payload.name.trim(),
-        request_username: payload.username.trim(),
-        requested_city_ids: cityIds,
-        tracking_secret: receipt.trackingSecret,
-        request_submission_key: receipt.submissionKey,
+      const result = await client.functions.invoke('request-access', {
+        body: {
+          displayName: payload.name.trim(),
+          username: payload.username.trim(),
+          password: payload.password,
+          cityIds,
+          trackingSecret: receipt.trackingSecret,
+          submissionKey: receipt.submissionKey,
+        },
       });
-      if (result.error) throw new Error(result.error.message || 'ACCESS_REQUEST_FAILED');
-      receipt.requestId = String(result.data || '');
+      await assertFunction(result);
+      receipt.requestId = String(result.data?.requestId || '');
+      if (!receipt.requestId) throw new Error('ACCESS_REQUEST_FAILED');
       return receipt;
     },
 
@@ -138,7 +142,6 @@ export function createAccessRequestsRepository(client: SupabaseClient) {
       return {
         request: mapRequest(result.data!.request as unknown as Record<string, unknown>),
         ...(result.data?.user ? { user: mapUser(result.data.user as unknown as Record<string, unknown>) } : {}),
-        ...(result.data?.activation !== undefined ? { activation: result.data.activation } : {}),
       };
     },
 
