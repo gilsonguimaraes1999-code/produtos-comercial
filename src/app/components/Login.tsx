@@ -9,12 +9,13 @@ import type { AccessRequestReceipt, AccessRequestTrackingStatus } from '../types
 const SAVED_LOGIN_KEY = 'sg_showcase_saved_login';
 const ACCESS_REQUEST_RECEIPT_KEY = 'sg_access_request_receipt';
 type LoginStep = 'start' | 'user' | 'password';
-type LoginMode = 'login' | 'request' | 'viewer' | 'activation';
+type LoginMode = 'login' | 'request' | 'viewer';
 
 const blankAccessRequest = {
   name: '',
   username: '',
   password: '',
+  confirmPassword: '',
   cityName: '',
   requestedCityNames: [] as string[],
 };
@@ -30,7 +31,7 @@ function readAccessRequestReceipt(): AccessRequestReceipt | null {
 }
 
 export function Login() {
-  const { login, activateAccount, activationEnabled, loginAsViewer } = useAuth();
+  const { login, loginAsViewer } = useAuth();
   const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -49,12 +50,6 @@ export function Login() {
   const [requestForm, setRequestForm] = useState(blankAccessRequest);
   const [viewerCities, setViewerCities] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
-  const [activationForm, setActivationForm] = useState({
-    username: '',
-    code: '',
-    password: '',
-    confirmPassword: '',
-  });
   const citiesRequestRef = useRef<Promise<string[]> | null>(null);
 
   useEffect(() => {
@@ -214,15 +209,16 @@ export function Login() {
 
     if (!payload.name) return setError(t('accessNameRequired'));
     if (!payload.username) return setError(t('accessUsernameRequired'));
-    if (!activationEnabled && !payload.password) return setError(t('accessPasswordRequired'));
+    if (!payload.password) return setError(t('accessPasswordRequired'));
     if (!payload.cityName) return setError(t('accessCityRequired'));
 
     if (/\s/.test(payload.username)) return setError(t('usernameInvalid'));
 
-    if (!activationEnabled && payload.password.length < 8) {
+    if (payload.password.length < 8) {
       setError(t('passwordMinLength'));
       return;
     }
+    if (payload.password !== requestForm.confirmPassword) return setError(t('passwordsDoNotMatch'));
 
     setLoading(true);
     setError('');
@@ -263,38 +259,6 @@ export function Login() {
     }
   }
 
-  async function submitActivation(event: FormEvent) {
-    event.preventDefault();
-    setError('');
-    setSuccess('');
-    if (!activationForm.username.trim()) return setError(t('userRequired'));
-    if (!activationForm.code.trim()) return setError(t('activationCodeRequired'));
-    if (activationForm.password.length < 8) return setError(t('passwordMinLength'));
-    if (activationForm.password !== activationForm.confirmPassword) {
-      return setError(t('passwordsDoNotMatch'));
-    }
-
-    setLoading(true);
-    try {
-      await activateAccount({
-        username: activationForm.username,
-        code: activationForm.code,
-        password: activationForm.password,
-      });
-      setActivationForm({ username: '', code: '', password: '', confirmPassword: '' });
-      sessionStorage.removeItem(ACCESS_REQUEST_RECEIPT_KEY);
-      setRequestTracking(null);
-      setMode('login');
-      setStep('start');
-      setSuccess(t('activationSuccess'));
-    } catch (err) {
-      console.error(err);
-      setError(translateAppError(err, t, 'activationFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <main className="login-page">
       <StarfieldBackground />
@@ -304,7 +268,7 @@ export function Login() {
           <img src="/alpha-logo.png" alt={t('siteName')} className="login-logo" />
         </div>
 
-        <h1>{mode === 'request' ? t('requestAccessTitle') : mode === 'viewer' ? t('viewerAccessTitle') : mode === 'activation' ? t('activateAccountTitle') : t('siteName')}</h1>
+        <h1>{mode === 'request' ? t('requestAccessTitle') : mode === 'viewer' ? t('viewerAccessTitle') : t('siteName')}</h1>
 
         <div className="login-flow">
           {mode === 'login' && step === 'start' && error && <p className="form-error login-start-error">{error}</p>}
@@ -377,85 +341,7 @@ export function Login() {
               <button type="button" className="login-link-button login-request-button" onClick={openRequestAccess}>
                 {t('requestAccess')}
               </button>
-              {activationEnabled && (
-                <button
-                  type="button"
-                  className="login-link-button login-request-button"
-                  onClick={() => { setMode('activation'); setError(''); setSuccess(''); }}
-                >
-                  {t('activateAccount')}
-                </button>
-              )}
             </div>
-          )}
-
-          {mode === 'activation' && (
-            <form onSubmit={submitActivation} className="request-access-form login-step-enter">
-              {error && <p className="form-error">{error}</p>}
-              <p className="viewer-access-hint">{t('activationHint')}</p>
-
-              <label className="login-field-label">
-                {t('username')} *
-                <div className="login-input-shell">
-                  <User size={17} />
-                  <input
-                    autoFocus
-                    autoComplete="username"
-                    value={activationForm.username}
-                    onChange={(event) => setActivationForm({ ...activationForm, username: event.target.value })}
-                    placeholder={t('username')}
-                  />
-                </div>
-              </label>
-
-              <label className="login-field-label">
-                {t('activationCode')} *
-                <div className="login-input-shell">
-                  <Lock size={17} />
-                  <input
-                    value={activationForm.code}
-                    onChange={(event) => setActivationForm({ ...activationForm, code: event.target.value.toUpperCase() })}
-                    placeholder={t('activationCodePlaceholder')}
-                    maxLength={10}
-                  />
-                </div>
-              </label>
-
-              <label className="login-field-label">
-                {t('newPassword')} *
-                <div className="login-input-shell">
-                  <Lock size={17} />
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={activationForm.password}
-                    onChange={(event) => setActivationForm({ ...activationForm, password: event.target.value })}
-                    placeholder="••••••••"
-                  />
-                </div>
-              </label>
-
-              <label className="login-field-label">
-                {t('confirmPassword')} *
-                <div className="login-input-shell">
-                  <Lock size={17} />
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={activationForm.confirmPassword}
-                    onChange={(event) => setActivationForm({ ...activationForm, confirmPassword: event.target.value })}
-                    placeholder="••••••••"
-                  />
-                </div>
-              </label>
-
-              <button type="submit" className="access-button" disabled={loading}>
-                {loading ? <span className="mini-spinner" /> : <span>{t('activate')}</span>}
-              </button>
-              <div className="login-links">
-                <button type="button" className="login-link-button" onClick={backToLogin}>{t('backToLogin')}</button>
-              </div>
-            </form>
           )}
 
           {mode === 'request' && requestTracking && (
@@ -507,19 +393,36 @@ export function Login() {
                 </div>
               </label>
 
-              {!activationEnabled && <label className="login-field-label">
+              <label className="login-field-label">
                 {t('password')} *
                 <div className="login-input-shell">
                   <Lock size={17} />
                   <input
                     type="password"
+                    required
+                    autoComplete="new-password"
                     value={requestForm.password}
                     onChange={(e) => setRequestForm({ ...requestForm, password: e.target.value })}
                     placeholder="••••••••"
                   />
                 </div>
                 <span className="login-help-text">{t('requestPasswordHint')}</span>
-              </label>}
+              </label>
+
+              <label className="login-field-label">
+                {t('confirmPassword')} *
+                <div className="login-input-shell">
+                  <Lock size={17} />
+                  <input
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    value={requestForm.confirmPassword}
+                    onChange={(e) => setRequestForm({ ...requestForm, confirmPassword: e.target.value })}
+                    placeholder="••••••••"
+                  />
+                </div>
+              </label>
 
               <label className="login-field-label">
                 {t('city')} *

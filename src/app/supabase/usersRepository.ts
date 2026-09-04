@@ -57,12 +57,6 @@ export function createUsersRepository(client: SupabaseClient) {
       const result = await client.functions.invoke("manage-user", { body: { action: "delete", profileId } });
       throwFunctionError(result);
     },
-
-    async createActivationCode(profileId: string): Promise<{ code: string; expiresAt: string }> {
-      const result = await client.functions.invoke("create-activation-code", { body: { profileId } });
-      throwFunctionError(result);
-      return { code: String(result.data?.code || ""), expiresAt: String(result.data?.expiresAt || "") };
-    },
   };
 }
 

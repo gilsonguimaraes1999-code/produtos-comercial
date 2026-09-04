@@ -47,21 +47,4 @@ describe("Supabase username authentication", () => {
       password: "secret-value",
     });
   });
-
-  it("preserves the activation error code returned by the Edge Function", async () => {
-    const invoke = vi.fn().mockResolvedValue({
-      data: null,
-      error: {
-        context: new Response(
-          JSON.stringify({ error: "ACTIVATION_CODE_EXPIRED" }),
-          { status: 410, headers: { "Content-Type": "application/json" } },
-        ),
-      },
-    });
-    const repository = createAuthRepository({ functions: { invoke } } as never);
-
-    await expect(
-      repository.activate({ username: " Owner ", code: "abc234def5", password: "password-123" }),
-    ).rejects.toMatchObject({ code: "ACTIVATION_CODE_EXPIRED" });
-  });
 });

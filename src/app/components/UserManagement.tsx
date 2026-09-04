@@ -47,7 +47,7 @@ const productPermissionLabels: Record<ProductPermission, string> = {
 
 export function UserManagement({ cities, onClose }: { cities: City[]; onClose: () => void }) {
   const { t, locale } = useTranslation();
-  const { token, user: currentUser, replaceUser, activationEnabled } = useAuth();
+  const { token, user: currentUser, replaceUser } = useAuth();
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [editing, setEditing] = useState<UserPayload | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<AuthUser | null>(null);
@@ -105,7 +105,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
     event.preventDefault();
     if (!editing) return;
     if (!editing.name.trim() || !editing.username.trim()) return setError(t('fillNameUser'));
-    if (!activationEnabled && !editing.id && !editing.password) return setError(t('definePassword'));
+    if (!editing.id && (!editing.password || editing.password.length < 8)) return setError(t('definePassword'));
     setSaving(true);
     setError('');
     try {
@@ -300,7 +300,7 @@ export function UserManagement({ cities, onClose }: { cities: City[]; onClose: (
             <label className="field-label">{t('username')}<input value={editing.username} onChange={(e) => setEditing({ ...editing, username: e.target.value })} /></label>
           </div>
           <div className="two-columns">
-            <label className="field-label">{t('password')}<input type="password" value={editing.password || ''} onChange={(e) => setEditing({ ...editing, password: e.target.value })} placeholder={editing.id ? t('leaveEmptyPassword') : t('requiredPassword')} /></label>
+            <label className="field-label">{t('password')}<input type="password" required={!editing.id} minLength={editing.id ? undefined : 8} autoComplete="new-password" value={editing.password || ''} onChange={(e) => setEditing({ ...editing, password: e.target.value })} placeholder={editing.id ? t('leaveEmptyPassword') : t('requiredPassword')} /></label>
             <div className="field-label">{t('role')}<RoleSelect value={editing.role} onChange={(role) => setEditing({ ...editing, role })} /></div>
           </div>
           <div className="permission-editor">

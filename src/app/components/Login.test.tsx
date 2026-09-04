@@ -5,7 +5,6 @@ import { Login } from './Login';
 
 const auth = vi.hoisted(() => ({
   login: vi.fn(),
-  activateAccount: vi.fn(),
   loginAsViewer: vi.fn(),
 }));
 
@@ -16,10 +15,7 @@ const accessRequests = vi.hoisted(() => ({
 }));
 
 vi.mock('../auth', () => ({
-  useAuth: () => ({
-    ...auth,
-    activationEnabled: true,
-  }),
+  useAuth: () => auth,
 }));
 
 vi.mock('../api', () => ({
@@ -62,6 +58,27 @@ describe('Login viewer access', () => {
     });
   });
 
+  it('requests a password confirmation and never shows first access', async () => {
+    render(<LanguageProvider><Login /></LanguageProvider>);
+
+    expect(screen.queryByRole('button', { name: /primeiro acesso/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /solicitar acesso/i }));
+
+    expect(await screen.findByLabelText(/^Senha \*/i)).toBeRequired();
+    expect(screen.getByLabelText(/^Confirmar senha \*/i)).toBeRequired();
+
+    fireEvent.change(screen.getByPlaceholderText('Seu nome'), { target: { value: 'Ana' } });
+    fireEvent.change(screen.getByPlaceholderText('sem_espacos'), { target: { value: 'ana' } });
+    fireEvent.change(screen.getByLabelText(/^Senha \*/i), { target: { value: 'senha-segura' } });
+    fireEvent.change(screen.getByLabelText(/^Confirmar senha \*/i), { target: { value: 'senha-diferente' } });
+    fireEvent.click(screen.getByRole('button', { name: /cidade \*/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nobre' }));
+    fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }));
+
+    expect(await screen.findByText('As senhas não coincidem.')).toBeVisible();
+    expect(accessRequests.create).not.toHaveBeenCalled();
+  });
+
   it('keeps polling through consecutive pending responses until approval', async () => {
     vi.useFakeTimers();
     const receipt = { requestId: 'request-1', trackingSecret: 'secret', submissionKey: 'submission' };
@@ -77,11 +94,14 @@ describe('Login viewer access', () => {
     await act(async () => Promise.resolve());
     fireEvent.change(screen.getByPlaceholderText('Seu nome'), { target: { value: 'Ana' } });
     fireEvent.change(screen.getByPlaceholderText('sem_espacos'), { target: { value: 'ana' } });
+    fireEvent.change(screen.getByLabelText(/^Senha \*/i), { target: { value: 'senha-segura' } });
+    fireEvent.change(screen.getByLabelText(/^Confirmar senha \*/i), { target: { value: 'senha-segura' } });
     fireEvent.click(screen.getByRole('button', { name: /cidade \*/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Nobre' }));
     fireEvent.click(screen.getByRole('button', { name: /enviar pedido/i }));
 
     await act(async () => Promise.resolve());
+    expect(accessRequests.create).toHaveBeenCalledWith(expect.objectContaining({ password: 'senha-segura' }));
     expect(screen.getByText(/solicitação pendente/i)).toBeInTheDocument();
     expect(JSON.parse(sessionStorage.getItem('sg_access_request_receipt') || 'null')).toEqual(receipt);
 
@@ -129,13 +149,13 @@ describe('Login viewer access', () => {
 
   it.each([
     ['pt', 'PENDENTE', 'Solicitação pendente. Aguardando análise do administrador.'],
-    ['pt', 'APROVADO', 'Solicitação aprovada. Use o primeiro acesso para ativar sua conta.'],
+    ['pt', 'APROVADO', 'Solicitação aprovada. Sua conta já está liberada para entrar.'],
     ['pt', 'REPROVADO', 'Solicitação rejeitada. Revise os dados e envie um novo pedido.'],
     ['en', 'PENDENTE', 'Access request pending. Waiting for administrator review.'],
-    ['en', 'APROVADO', 'Access request approved. Use first access to activate your account.'],
+    ['en', 'APROVADO', 'Access request approved. Your account is ready to sign in.'],
     ['en', 'REPROVADO', 'Access request rejected. Review the details and send a new request.'],
     ['es', 'PENDENTE', 'Solicitud de acceso pendiente. Esperando la revisión del administrador.'],
-    ['es', 'APROVADO', 'Solicitud de acceso aprobada. Usa el primer acceso para activar tu cuenta.'],
+    ['es', 'APROVADO', 'Solicitud de acceso aprobada. Tu cuenta ya está lista para entrar.'],
     ['es', 'REPROVADO', 'Solicitud de acceso rechazada. Revisa los datos y envía una nueva solicitud.'],
   ] as const)('renders the %s tracking panel for a %s request', async (language, status, expectedText) => {
     vi.useFakeTimers();
