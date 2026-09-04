@@ -1,58 +1,93 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from "vitest";
 
-import { reviewAccessRequest } from './handler';
+import { reviewAccessRequest } from "./handler";
 
-describe('review access request handler', () => {
-  it('returns the reviewed request and created pending user without a list reload', async () => {
-    const dependencies = {
-      loadRequest: vi.fn().mockResolvedValue({ id: 'request-1', username: 'ana', status: 'pending', review_key: null }),
-      createAuthUser: vi.fn().mockResolvedValue('auth-1'),
-      deleteAuthUser: vi.fn(),
-      review: vi.fn().mockResolvedValue('profile-1'),
-      loadReviewedRequest: vi.fn().mockResolvedValue({ id: 'request-1', status: 'approved' }),
-      loadProfile: vi.fn().mockResolvedValue({ id: 'profile-1', status: 'pending_activation' }),
-      issueActivation: vi.fn().mockResolvedValue({ code: 'ACTIVATION', expiresAt: '2026-08-28T12:00:00Z' }),
-    };
+function dependencies(request: Record<string, unknown>) {
+  return {
+    loadRequest: vi.fn().mockResolvedValue(request),
+    deleteAuthUser: vi.fn().mockResolvedValue(undefined),
+    review: vi.fn().mockResolvedValue("profile-1"),
+    loadReviewedRequest: vi.fn().mockResolvedValue({ id: "request-1", status: "approved" }),
+    loadProfile: vi.fn().mockResolvedValue({ id: "profile-1", status: "active" }),
+  };
+}
 
-    const response = await reviewAccessRequest({ requestId: 'request-1', decision: 'approved', cityIds: ['city-1'], reviewKey: 'review-1' }, dependencies);
+describe("review access request handler", () => {
+  it("approves the reserved identity as an active user without activation data", async () => {
+    const deps = dependencies({
+      id: "request-1",
+      username: "ana",
+      status: "pending",
+      review_key: null,
+      pending_auth_user_id: "auth-1",
+    });
 
-    expect(response.request).toEqual({ id: 'request-1', status: 'approved' });
-    expect(response.user).toEqual({ id: 'profile-1', status: 'pending_activation' });
-    expect(response.activation).toEqual({ code: 'ACTIVATION', expiresAt: '2026-08-28T12:00:00Z' });
+    const response = await reviewAccessRequest({
+      requestId: "request-1",
+      decision: "approved",
+      cityIds: ["city-1"],
+      reviewKey: "review-1",
+    }, deps);
+
+    expect(deps.review).toHaveBeenCalledWith({
+      requestId: "request-1",
+      decision: "approved",
+      cityIds: ["city-1"],
+      reviewKey: "review-1",
+      reason: "",
+    });
+    expect(response).toEqual({
+      ok: true,
+      request: { id: "request-1", status: "approved" },
+      user: { id: "profile-1", status: "active" },
+    });
+    expect(response).not.toHaveProperty("activation");
   });
 
-  it('does not create a second auth user or rotate activation when the same review key is retried', async () => {
-    const dependencies = {
-      loadRequest: vi.fn().mockResolvedValue({ id: 'request-1', username: 'ana', status: 'approved', review_key: 'review-1' }),
-      createAuthUser: vi.fn(),
-      deleteAuthUser: vi.fn(),
-      review: vi.fn().mockResolvedValue('profile-1'),
-      loadReviewedRequest: vi.fn().mockResolvedValue({ id: 'request-1', status: 'approved' }),
-      loadProfile: vi.fn().mockResolvedValue({ id: 'profile-1', status: 'pending_activation' }),
-      issueActivation: vi.fn().mockResolvedValue({ code: 'MUST_NOT_BE_ISSUED' }),
-    };
+  it("does not create or change identities when the same approval is retried", async () => {
+    const deps = dependencies({
+      id: "request-1",
+      username: "ana",
+      status: "approved",
+      review_key: "review-1",
+      pending_auth_user_id: "auth-1",
+    });
 
-    const response = await reviewAccessRequest({ requestId: 'request-1', decision: 'approved', cityIds: ['city-1'], reviewKey: 'review-1' }, dependencies);
-
-    expect(dependencies.createAuthUser).not.toHaveBeenCalled();
-    expect(dependencies.issueActivation).not.toHaveBeenCalled();
-    expect(dependencies.review).toHaveBeenCalledWith({ requestId: 'request-1', decision: 'approved', cityIds: ['city-1'], reviewKey: 'review-1', authUserId: null, reason: '' });
-    expect(response.activation).toBeNull();
+    await expect(reviewAccessRequest({
+      requestId: "request-1",
+      decision: "approved",
+      cityIds: ["city-1"],
+      reviewKey: "review-1",
+    }, deps)).resolves.toMatchObject({ user: { status: "active" } });
+    expect(deps.deleteAuthUser).not.toHaveBeenCalled();
   });
 
-  it('returns only the request for rejection', async () => {
-    const dependencies = {
-      loadRequest: vi.fn().mockResolvedValue({ id: 'request-2', username: 'bia', status: 'pending', review_key: null }),
-      createAuthUser: vi.fn(),
-      deleteAuthUser: vi.fn(),
-      review: vi.fn().mockResolvedValue(null),
-      loadReviewedRequest: vi.fn().mockResolvedValue({ id: 'request-2', status: 'rejected', rejection_reason: 'Dados inválidos' }),
-      loadProfile: vi.fn(),
-      issueActivation: vi.fn(),
-    };
+  it("deletes the reserved identity after rejection", async () => {
+    const deps = dependencies({
+      id: "request-2",
+      username: "bia",
+      status: "pending",
+      review_key: null,
+      pending_auth_user_id: "auth-2",
+    });
+    deps.review.mockResolvedValue(null);
+    deps.loadReviewedRequest.mockResolvedValue({
+      id: "request-2",
+      status: "rejected",
+      rejection_reason: "Dados inválidos",
+    });
 
-    const response = await reviewAccessRequest({ requestId: 'request-2', decision: 'rejected', reason: 'Dados inválidos', reviewKey: 'review-2' }, dependencies);
+    const response = await reviewAccessRequest({
+      requestId: "request-2",
+      decision: "rejected",
+      reason: "Dados inválidos",
+      reviewKey: "review-2",
+    }, deps);
 
-    expect(response).toEqual({ ok: true, request: { id: 'request-2', status: 'rejected', rejection_reason: 'Dados inválidos' } });
+    expect(deps.deleteAuthUser).toHaveBeenCalledWith("auth-2");
+    expect(response).toEqual({
+      ok: true,
+      request: { id: "request-2", status: "rejected", rejection_reason: "Dados inválidos" },
+    });
   });
 });
