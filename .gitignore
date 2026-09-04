@@ -5,6 +5,7 @@ dist/
 .output/
 .tanstack/
 .worktrees/
+.tmp-function-*/
 supabase/.temp/
 .env
 .env.*

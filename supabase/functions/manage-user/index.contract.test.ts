@@ -17,4 +17,9 @@ describe("manage-user password contract", () => {
     expect(source).toContain('requestedPassword.length < 8');
     expect(source).toContain('throw new Error("PASSWORD_TOO_SHORT")');
   });
+
+  it("updates the password when an owner supplies one for an existing account", () => {
+    expect(source).toContain("...(requestedPassword ? { password: requestedPassword } : {})");
+    expect(source).toContain("requestedPassword && requestedPassword.length < 8");
+  });
 });

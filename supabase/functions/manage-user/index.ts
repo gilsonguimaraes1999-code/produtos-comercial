@@ -44,7 +44,9 @@ Deno.serve(async (request) => {
     const user = body.user;
     const username = normalizeUsername(String(user.username || ""));
     const displayName = String(user.name || "").trim();
+    const requestedPassword = String(user.password || "");
     if (!/^[a-z0-9._-]{2,64}$/.test(username) || displayName.length < 2) return jsonResponse({ error: "USER_DATA_INVALID" }, 400);
+    if (requestedPassword && requestedPassword.length < 8) throw new Error("PASSWORD_TOO_SHORT");
     let profileId = user.id || "";
     let authUserId: string;
     if (profileId) {
@@ -52,12 +54,14 @@ Deno.serve(async (request) => {
       if (current.error || !current.data?.auth_user_id) return jsonResponse({ error: "USER_NOT_FOUND" }, 404);
       if (current.data.role === "owner" && profileId !== actor.data.id) return jsonResponse({ error: "OWNER_EDIT_FORBIDDEN" }, 403);
       authUserId = current.data.auth_user_id;
-      const authUpdated = await admin.auth.admin.updateUserById(authUserId, { email: technicalEmailForUsername(username) });
+      const authUpdated = await admin.auth.admin.updateUserById(authUserId, {
+        email: technicalEmailForUsername(username),
+        ...(requestedPassword ? { password: requestedPassword } : {}),
+      });
       if (authUpdated.error) throw authUpdated.error;
       const updated = await admin.from("profiles").update({ username, display_name: displayName, role: user.role === "OWNER" ? "owner" : "commercial", status: user.active === false ? "disabled" : "active" }).eq("id", profileId);
       if (updated.error) throw updated.error;
     } else {
-      const requestedPassword = String(user.password || "");
       if (requestedPassword.length < 8) throw new Error("PASSWORD_TOO_SHORT");
       const created = await admin.auth.admin.createUser({ email: technicalEmailForUsername(username), password: requestedPassword, email_confirm: true });
       if (created.error || !created.data.user) throw created.error || new Error("AUTH_USER_CREATION_FAILED");
